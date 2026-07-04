@@ -1,0 +1,272 @@
+// Royal 1 — data model (PostgreSQL)
+//
+// Uses Prisma's PostgreSQL provider. Multi-row atomicity (wallet/betting/
+// settlement code) uses standard Postgres transactions via prisma.$transaction —
+// no special server topology is required.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev; "rhel-openssl-3.0.x" kept for RHEL-family serverless
+  // hosts. The Docker image (debian bookworm) is covered by "native" at build time.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Users & auth ─────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  isAdmin      Boolean  @default(false)
+  isBanned     Boolean  @default(false)
+  // per-user provably-fair client seed (rotatable)
+  clientSeed   String   @default("")
+  // Referral: the userId of the referrer, set ONCE at registration and never
+  // changed (so an existing user can never be reassigned). Null = organic signup.
+  referredBy   String?
+  // The deposit wallet currently LOCKED to this user. Assigned at random from the
+  // active pool on the first deposit visit and held (across refresh/logout/login)
+  // until a deposit is APPROVED, at which point it is cleared so the next request
+  // rotates to a new random wallet.
+  assignedWalletId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wallet    Wallet?
+  bets      Bet[]
+  txns      Transaction[]
+  auditLogs AuditLog[]
+}
+
+// ───────────────────────────── Wallet & ledger ──────────────────────────
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  // balance is stored in integer "coin cents" (1 coin = 100) to avoid float drift
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Every balance change is recorded as an immutable ledger row.
+model Transaction {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String   // SIGNUP_BONUS | BET | PAYOUT | DEPOSIT | WITHDRAWAL | ADMIN_CREDIT | ADMIN_DEBIT
+  amount       Int      // signed coin-cents, +credit / -debit
+  balanceAfter Int
+  ref          String?  // related bet id / external txn ref
+  meta         String?  // JSON string
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ───────────────────────────── Games ────────────────────────────────────
+
+model GameRound {
+  id             String    @id @default(cuid())
+  game           String    // COLOR | CRASH | NUMBER
+  period         BigInt    // monotonic round number
+  state          String    @default("BETTING") // BETTING | RUNNING | SETTLED
+  // provably fair
+  serverSeed     String
+  serverSeedHash String
+  // outcome (game-specific, JSON encoded)
+  result         String?
+  // Admin override set from the panel BEFORE settlement. JSON, game-specific:
+  //   COLOR  → {"color":"RED"} or {"digit":3}
+  //   NUMBER → {"digit":7}
+  // When present, the prediction engine uses this instead of its own decision.
+  forcedResult   String?
+  startAt        DateTime
+  lockAt         DateTime // betting closes
+  settleAt       DateTime
+  settledAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  bets Bet[]
+
+  @@unique([game, period])
+  @@index([game, state])
+  // Serves the settlement-recency history feed (game + state equality, then
+  // settledAt desc) without an in-memory sort at scale.
+  @@index([game, state, settledAt])
+}
+
+model Bet {
+  id        String   @id @default(cuid())
+  userId    String
+  roundId   String
+  game      String   // COLOR | CRASH
+  amount    Int      // coin-cents staked (gross — what the user is debited)
+  // House fee taken on the stake. effectiveBet = amount - feeAmount and is what
+  // settlement uses to compute payouts. Legacy rows have feeAmount 0 / effectiveBet 0.
+  feeAmount    Int   @default(0)
+  effectiveBet Int   @default(0)
+  // COLOR: selection = "RED" | "GREEN" | "VIOLET"
+  // CRASH: selection = autoCashout multiplier x100 (e.g. "200" = 2.00x), "0" = manual
+  selection String
+  // CRASH manual/auto cashout multiplier achieved x100, null if not cashed
+  cashoutX  Int?
+  status    String   @default("PENDING") // PENDING | WON | LOST | CASHED
+  payout    Int      @default(0) // coin-cents returned (0 if lost)
+  createdAt DateTime @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  round GameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([roundId])
+}
+
+// ───────────────────────────── Referral rewards ─────────────────────────
+//
+// When a referred user makes their FIRST successful (approved) deposit, the
+// referrer earns a fixed USDT-equivalent reward. The reward NEVER goes
+// straight to the main wallet: it is created PENDING (referral balance),
+// unlocks `referral_lock_days` (7) days later, and the referrer must press
+// "Claim" to transfer it into the wallet ledger.
+model ReferralReward {
+  id             String    @id @default(cuid())
+  referrerId     String    // who earns the reward
+  referredUserId String    @unique // the depositor — one reward ever (first deposit only)
+  depositId      String    @unique // the qualifying deposit (reference)
+  amount         Int       // coin-cents
+  amountUsdt     Float     // reward face value in USDT (e.g. 4)
+  // PENDING (locked or claimable — claimable once unlockAt has passed) | CLAIMED
+  status         String    @default("PENDING")
+  createdAt      DateTime  @default(now()) // reward created date
+  unlockAt       DateTime  // createdAt + holding period; claimable after this
+  claimedAt      DateTime?
+
+  @@index([referrerId, status])
+  @@index([referrerId, createdAt])
+}
+
+// ───────────────────────────── Platform ─────────────────────────────────
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// House fee taken on every bet (revenue ledger, separate from the player wallet
+// ledger). One row per fee charged, so the admin dashboard can total fee income
+// over any time window.
+model HouseTransaction {
+  id        String   @id @default(cuid())
+  betId     String
+  userId    String
+  game      String
+  fee       Int      // coin-cents taken as house fee
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ───────────────────────── Crypto (TRC20 USDT) ──────────────────────────
+//
+// Deposit wallets are admin-managed. Each user is randomly assigned ONE active
+// wallet (locked until their deposit completes). A deposit is a user-initiated
+// REQUEST: the user sends USDT to the assigned wallet then clicks "I Have Paid".
+// The TronGrid poller then watches that wallet and matches the incoming transfer
+// by amount, auto-crediting on confirmation; the admin can also approve/reject.
+
+// Admin-managed pool of TRC20 receive addresses users are randomly assigned.
+model DepositWallet {
+  id           String   @id @default(cuid())
+  name         String   // human label, e.g. "Wallet 1"
+  address      String   // TRC20 receive address
+  network      String   @default("TRC20")
+  active       Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([active, displayOrder])
+}
+
+// A user-initiated deposit request against an assigned wallet.
+// walletId/toAddress are optional only to tolerate legacy on-chain deposit rows
+// imported from the previous auto-detect system — the new request flow always
+// populates them.
+model Deposit {
+  id            String    @id @default(cuid())
+  userId        String
+  walletId      String?   // the DepositWallet assigned at request time
+  toAddress     String?             // snapshot of the assigned wallet address
+  network       String    @default("TRC20")
+  amountUsdt    Float               // amount the user says they sent
+  coins         Int       @default(0) // coin-cents credited on approval
+  // On-chain match (filled by the poller, optional if approved manually).
+  txid          String?             // on-chain transaction id (deduped in code)
+  fromAddress   String?
+  confirmations Int       @default(0)
+  // PENDING (awaiting verification) | APPROVED (credited) | REJECTED
+  status        String    @default("PENDING")
+  adminId       String?   // admin who approved/rejected
+  note          String?
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+  creditedAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([walletId, status])
+}
+
+model Withdrawal {
+  id          String    @id @default(cuid())
+  userId      String
+  address     String              // TRC20 destination address
+  coins       Int                 // coin-cents debited (held at request time)
+  usdt        Float               // coins / conversion rate
+  feeUsdt     Float
+  receiveUsdt Float               // usdt - fee (what the user is sent)
+  // PENDING | APPROVED | COMPLETED | REJECTED
+  status      String    @default("PENDING")
+  txid        String?             // set when the admin marks it COMPLETED
+  adminId     String?
+  note        String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+// Key/value settings editable from the admin panel (e.g. signup bonus).
+// The natural string key is the primary key.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  detail    String?  // JSON string
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
