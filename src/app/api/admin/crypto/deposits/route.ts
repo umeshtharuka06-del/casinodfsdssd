@@ -21,10 +21,12 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const status = sp.get("status")?.toUpperCase();
+  const type = sp.get("type")?.toUpperCase(); // ONCHAIN | OFFCHAIN
   const q = sp.get("q")?.trim();
 
   const where: Prisma.DepositWhereInput = {};
   if (status && STATUSES.includes(status)) where.status = status;
+  if (type === "ONCHAIN" || type === "OFFCHAIN") where.txType = type;
 
   if (q) {
     // Search by username, user id (UID), or txid.
@@ -63,9 +65,11 @@ export async function GET(req: NextRequest) {
       wallet: (d.walletId && walletName.get(d.walletId)) || "—",
       walletAddress: d.toAddress ?? "",
       network: d.network,
+      txType: d.txType, // ONCHAIN | OFFCHAIN
       txid: d.txid,
       confirmations: d.confirmations,
       status: d.status, // PENDING | APPROVED | REJECTED
+      note: d.note,
       createdAt: d.createdAt.toISOString(),
     }))
   );
@@ -83,6 +87,11 @@ export async function POST(req: NextRequest) {
   const dep = await prisma.deposit.findUnique({ where: { id } });
   if (!dep) return fail("Deposit request not found.", 404);
   if (dep.status !== "PENDING") return fail("This request is already finalised.", 409);
+
+  // Off-chain deposits can't be chain-verified, so a rejection must carry the
+  // reviewer's reason (shown to the user in support conversations + audit).
+  if (action === "reject" && dep.txType === "OFFCHAIN" && !note?.trim())
+    return fail("A rejection reason is required for off-chain deposits.");
 
   try {
     if (action === "approve") {

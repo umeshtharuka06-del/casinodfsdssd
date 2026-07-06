@@ -19,9 +19,10 @@ const MODES = [
   { key: "EMERD", label: "Emerd" },
 ] as const;
 
-// Amount presets shown inside the bet modal. Minimum stake is 50 coins.
-const PRESETS = [50, 100, 500, 1000, 5000];
-const MIN_BET = 50;
+// Amount presets shown inside the bet modal. Minimum stake is 100 coins
+// (Crash keeps its own 50-coin minimum — see games/crash).
+const PRESETS = [100, 500, 1000, 5000];
+const MIN_BET = 100;
 
 interface MyBet {
   id: string;

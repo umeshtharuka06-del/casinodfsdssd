@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OverviewTab } from "@/components/admin/OverviewTab";
 import { FinancialTab } from "@/components/admin/FinancialTab";
@@ -11,6 +11,7 @@ import { ForceResultTab } from "@/components/admin/ForceResultTab";
 import { AnnouncementsTab } from "@/components/admin/AnnouncementsTab";
 import { ConfigTab } from "@/components/admin/ConfigTab";
 import { DepositsTab } from "@/components/admin/DepositsTab";
+import { ManualReviewsTab } from "@/components/admin/ManualReviewsTab";
 import { CryptoWithdrawalsTab } from "@/components/admin/CryptoWithdrawalsTab";
 import { DepositWalletsTab } from "@/components/admin/DepositWalletsTab";
 
@@ -20,6 +21,7 @@ const TABS = [
   { key: "users", label: "Users" },
   { key: "force", label: "Force Result" },
   { key: "deposits", label: "Deposits" },
+  { key: "manual", label: "Manual Reviews" },
   { key: "withdrawals", label: "Withdrawals" },
   { key: "wallets", label: "Deposit Wallets" },
   { key: "history", label: "Game History" },
@@ -28,8 +30,21 @@ const TABS = [
   { key: "config", label: "Config" },
 ] as const;
 
+type TabKey = (typeof TABS)[number]["key"];
+
 export default function AdminPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("overview");
+  const [tab, setTab] = useState<TabKey>("overview");
+  const [focusDeposit, setFocusDeposit] = useState<string | null>(null);
+
+  // Deep links from Telegram review alerts: /admin?tab=manual&deposit=<id>.
+  // Read on mount from window.location (client-only console; avoids the
+  // useSearchParams Suspense requirement).
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const t = sp.get("tab");
+    if (t && TABS.some((x) => x.key === t)) setTab(t as TabKey);
+    setFocusDeposit(sp.get("deposit"));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -68,6 +83,7 @@ export default function AdminPage() {
       {tab === "users" && <UsersTab />}
       {tab === "force" && <ForceResultTab />}
       {tab === "deposits" && <DepositsTab />}
+      {tab === "manual" && <ManualReviewsTab focusId={focusDeposit} />}
       {tab === "withdrawals" && <CryptoWithdrawalsTab />}
       {tab === "wallets" && <DepositWalletsTab />}
       {tab === "history" && <GameHistoryTab />}

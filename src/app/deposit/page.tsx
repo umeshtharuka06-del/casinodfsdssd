@@ -31,6 +31,7 @@ interface Deposit {
   network: string;
   amountUsdt: number;
   coinsFmt: string;
+  txType: string;
   txid: string | null;
   confirmations: number;
   status: string;
@@ -51,6 +52,7 @@ export default function DepositPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [qr, setQr] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
+  const [txType, setTxType] = useState<"ONCHAIN" | "OFFCHAIN">("ONCHAIN");
   const [txid, setTxid] = useState("");
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -99,14 +101,20 @@ export default function DepositPage() {
     if (!cfg?.wallet) return;
     if (amount === null || amount < cfg.minDepositUsdt)
       return setMsg({ text: `Minimum deposit is ${cfg.minDepositUsdt} USDT.`, ok: false });
+    if (txType === "OFFCHAIN" && txid.trim().length < 6)
+      return setMsg({
+        text: "Enter the off-chain transaction reference so our team can verify it.",
+        ok: false,
+      });
     setBusy(true);
     const r = await api("/api/crypto/deposits", {
-      json: { amountUsdt: amount, txid: txid.trim() || undefined },
+      json: { amountUsdt: amount, txType, txid: txid.trim() || undefined },
     });
     setBusy(false);
     if (!r.ok) return setMsg({ text: r.error || "Could not submit.", ok: false });
     setAmount(null);
     setTxid("");
+    setTxType("ONCHAIN");
     setSuccess(true);
     setTimeout(() => setSuccess(false), 3500);
     refresh();
@@ -216,14 +224,64 @@ export default function DepositPage() {
                 </div>
               )}
             </div>
+            {/* Payment type — on-chain transfers verify automatically; off-chain
+                (exchange/internal) references go to manual admin review. */}
             <div>
-              <label className="text-xs text-slate-400">Transaction ID (optional — speeds up verification)</label>
+              <label className="text-xs text-slate-400">How did you pay?</label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { key: "ONCHAIN", label: "On-chain", hint: "Wallet transfer (TXID)" },
+                    { key: "OFFCHAIN", label: "Off-chain", hint: "Exchange / internal transfer" },
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setTxType(o.key)}
+                    aria-pressed={txType === o.key}
+                    className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                      txType === o.key
+                        ? "border-royal-blue bg-royal-blue/10"
+                        : "border-black/10 bg-black/[0.02]"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold text-[#111111]">
+                      <span
+                        className={`grid h-4 w-4 place-items-center rounded-full border ${
+                          txType === o.key ? "border-royal-blue" : "border-slate-400"
+                        }`}
+                      >
+                        {txType === o.key && (
+                          <span className="h-2 w-2 rounded-full bg-royal-blue" />
+                        )}
+                      </span>
+                      {o.label}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] text-slate-500">{o.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400">
+                {txType === "ONCHAIN"
+                  ? "Transaction ID (optional — speeds up verification)"
+                  : "Off-chain transaction reference (required)"}
+              </label>
               <input
                 value={txid}
                 onChange={(e) => setTxid(e.target.value)}
-                placeholder="On-chain TXID"
+                placeholder={txType === "ONCHAIN" ? "On-chain TXID" : "Exchange / internal transfer ID"}
                 className="input mt-1 font-mono text-xs"
               />
+              {txType === "OFFCHAIN" && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Off-chain transfers can&apos;t be verified automatically — our team will
+                  review and credit your deposit manually.
+                </p>
+              )}
             </div>
 
             <button
@@ -265,7 +323,7 @@ export default function DepositPage() {
                             </span>
                           )}
                         </div>
-                        {d.txid ? (
+                        {d.txid && d.txType !== "OFFCHAIN" ? (
                           <a
                             href={`https://tronscan.org/#/transaction/${d.txid}`}
                             target="_blank"
@@ -274,6 +332,13 @@ export default function DepositPage() {
                           >
                             {d.txid.slice(0, 10)}…{d.txid.slice(-8)}
                           </a>
+                        ) : d.txid ? (
+                          <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-slate-500">
+                            {d.txid.slice(0, 10)}…{d.txid.slice(-6)}
+                            <span className="chip bg-game-violet/15 font-sans text-game-violet">
+                              Off-chain
+                            </span>
+                          </div>
                         ) : (
                           <div className="truncate font-mono text-[11px] text-slate-500">
                             to {d.toAddress.slice(0, 8)}…{d.toAddress.slice(-6)}

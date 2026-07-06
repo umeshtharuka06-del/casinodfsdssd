@@ -18,6 +18,7 @@ function serialize(d: {
   network: string;
   amountUsdt: number;
   coins: number;
+  txType: string;
   txid: string | null;
   confirmations: number;
   status: string;
@@ -29,6 +30,7 @@ function serialize(d: {
     network: d.network,
     amountUsdt: d.amountUsdt,
     coinsFmt: fmtCoins(d.coins),
+    txType: d.txType, // ONCHAIN | OFFCHAIN
     txid: d.txid,
     confirmations: d.confirmations,
     status: d.status, // PENDING | APPROVED | REJECTED
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = cryptoDepositSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return fail(firstError(parsed.error));
-  const { amountUsdt, txid } = parsed.data;
+  const { amountUsdt, txid, txType } = parsed.data;
 
   const cfg = await getCryptoConfig();
   if (amountUsdt < cfg.minDepositUsdt)
@@ -91,6 +93,7 @@ export async function POST(req: NextRequest) {
       network: wallet.network,
       amountUsdt,
       coins,
+      txType, // OFFCHAIN requests skip the poller and go to manual admin review
       txid: txid ?? null,
       status: "PENDING",
     },
@@ -98,14 +101,18 @@ export async function POST(req: NextRequest) {
 
   await audit("crypto.deposit.request", {
     userId: user.id,
-    detail: { id: deposit.id, amountUsdt, wallet: wallet.address, txid },
+    detail: { id: deposit.id, amountUsdt, wallet: wallet.address, txid, txType },
   });
   await notifyDepositRequest({
     username: user.username,
+    email: user.email,
     uid: user.id,
     amountUsdt,
     coins: fmtCoins(coins),
     wallet: wallet.address,
+    txType,
+    txid,
+    depositId: deposit.id,
   });
 
   return ok(serialize(deposit));

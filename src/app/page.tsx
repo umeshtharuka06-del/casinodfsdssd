@@ -6,7 +6,11 @@ import { api } from "@/lib/client";
 import { useUser } from "@/lib/user-context";
 import { CoinIcon } from "@/components/CoinIcon";
 import { Landing } from "@/components/Landing";
-import { VipBanner } from "@/components/VipBanner";
+import { VipModal } from "@/components/VipModal";
+import {
+  TelegramChannelCard,
+  useSiteContent,
+} from "@/components/TelegramSections";
 import { coins } from "@/lib/fmt";
 import {
   MegaphoneIcon,
@@ -54,6 +58,7 @@ export default function HomePage() {
   const { me, loading } = useUser();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [txns, setTxns] = useState<Txn[]>([]);
+  const content = useSiteContent();
 
   useEffect(() => {
     api<Announcement[]>("/api/announcements").then(
@@ -80,8 +85,9 @@ export default function HomePage() {
 
   return (
     <div className="content-col space-y-4 px-3 pb-28 pt-3 sm:px-4">
-      {/* VIP promotional banner (closable, admin-configurable) */}
-      <VipBanner variant="home" />
+      {/* VIP promo — premium modal shown once per configured interval
+          (replaces the old permanently-visible banner) */}
+      <VipModal />
 
       {/* Announcement */}
       <div className="card flex items-start gap-3 p-4">
@@ -124,6 +130,9 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Free signal channel (optional on Home, CMS-managed) */}
+      {content?.channel.showHome && <TelegramChannelCard content={content.channel} />}
 
       {/* Referral promotion */}
       <Link

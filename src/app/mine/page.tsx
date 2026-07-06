@@ -16,6 +16,11 @@ import {
   WithdrawIcon,
 } from "@/components/icons";
 import { ChangePassword } from "@/components/ChangePassword";
+import {
+  TelegramChannelCard,
+  TelegramSupportCard,
+  useSiteContent,
+} from "@/components/TelegramSections";
 import { coins } from "@/lib/fmt";
 
 interface Txn {
@@ -44,6 +49,7 @@ export default function MinePage() {
   const { me, loading, logout } = useUser();
   const router = useRouter();
   const [txns, setTxns] = useState<Txn[]>([]);
+  const content = useSiteContent();
 
   useEffect(() => {
     if (!loading && !me) router.replace("/login?next=/mine");
@@ -98,11 +104,12 @@ export default function MinePage() {
             <CoinIcon /> {coins(me.balanceFmt)}
           </span>
         </div>
+        {/* Identical styling to the Home-page wallet buttons */}
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <Link href="/deposit" className="btn-orange">
+          <Link href="/deposit" className="btn-green">
             <RechargeIcon className="h-4 w-4" /> Deposit
           </Link>
-          <Link href="/withdraw" className="btn-ghost">
+          <Link href="/withdraw" className="btn-blue">
             <WithdrawIcon className="h-4 w-4" /> Withdraw
           </Link>
         </div>
@@ -129,19 +136,26 @@ export default function MinePage() {
         <span className="text-slate-500">›</span>
       </Link>
 
-      {/* Transactions — preview only; full list lives on /transactions */}
+      {/* Free signal channel + Telegram support (CMS-managed, ordered) */}
+      {content &&
+        [
+          { key: "channel", order: content.channel.order, node: <TelegramChannelCard content={content.channel} /> },
+          { key: "support", order: content.support.order, node: <TelegramSupportCard content={content.support} /> },
+        ]
+          .sort((a, b) => a.order - b.order)
+          .map((s) => <div key={s.key}>{s.node}</div>)}
+
+      {/* Transactions — preview only; the full ledger lives on /transactions */}
       <div className="card p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <Link
+          href="/transactions"
+          className="mb-3 flex items-center justify-between"
+        >
           <h2 className="text-sm font-semibold">Transactions</h2>
-          {txns.length > 0 && (
-            <Link
-              href="/transactions"
-              className="text-xs font-semibold text-royal-blue-bright"
-            >
-              View all →
-            </Link>
-          )}
-        </div>
+          <span className="text-xs font-semibold text-royal-blue-bright">
+            View all →
+          </span>
+        </Link>
         {txns.length === 0 ? (
           <div className="py-6 text-center text-sm text-slate-500">
             No transactions yet.
@@ -172,11 +186,11 @@ export default function MinePage() {
         )}
       </div>
 
-      {/* Quick links */}
+      {/* Quick links — Promotion intentionally omitted here: the referral
+          shortcut card above is the single Promotion entry. */}
       <div className="card divide-y divide-black/5 p-2">
         <Row href="/history" icon={HistoryIcon} label="Game history" />
         <Row href="/mywin" icon={TrophyIcon} label="My bets" />
-        <Row href="/referral" icon={ReferralIcon} label="Promotion" />
         {me.isAdmin && <Row href="/admin" icon={AdminIcon} label="Admin panel" />}
       </div>
 
