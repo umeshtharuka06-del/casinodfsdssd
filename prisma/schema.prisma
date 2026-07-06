@@ -223,6 +223,11 @@ model Deposit {
   network       String    @default("TRC20")
   amountUsdt    Float               // amount the user says they sent
   coins         Int       @default(0) // coin-cents credited on approval
+  // How the user says they paid. ONCHAIN = a TRC20 transfer the poller can
+  // verify automatically. OFFCHAIN = an internal/exchange transfer reference
+  // that CANNOT be chain-verified — it always goes to manual admin review and
+  // is excluded from the poller's auto-credit path.
+  txType        String    @default("ONCHAIN")
   // On-chain match (filled by the poller, optional if approved manually).
   txid          String?             // on-chain transaction id (deduped in code)
   fromAddress   String?
@@ -238,6 +243,8 @@ model Deposit {
   @@index([userId, createdAt])
   @@index([status])
   @@index([walletId, status])
+  // Serves the admin manual-review queue (OFFCHAIN + PENDING).
+  @@index([txType, status])
 }
 
 model Withdrawal {
