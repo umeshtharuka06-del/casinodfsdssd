@@ -15,5 +15,6 @@ export async function GET() {
     createdAt: user.createdAt.toISOString(),
     balance,
     balanceFmt: fmtCoins(balance),
+    vipLevel: user.vipLevel,
   });
 }

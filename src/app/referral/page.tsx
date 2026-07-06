@@ -27,6 +27,10 @@ interface Summary {
   claimableFmt: string;
   claimedFmt: string;
   balanceFmt: string;
+  qualifiedReferrals: number;
+  pendingReferrals: number;
+  rejectedReferrals: number;
+  totalEarningsFmt: string;
   rewards: Reward[];
   recent: Array<{ username: string; createdAt: string; deposited: boolean }>;
 }
@@ -157,8 +161,8 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      {/* Invite stats */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Invite stats — only approved-deposit referrals qualify (Part 4) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card p-4 text-center">
           <div className="text-xs font-medium text-[#666666]">Invited users</div>
           <div className="mt-1 font-display text-2xl font-bold tabular-nums text-royal-blue-bright">
@@ -166,9 +170,21 @@ export default function ReferralPage() {
           </div>
         </div>
         <div className="card p-4 text-center">
-          <div className="text-xs font-medium text-[#666666]">Successful deposits</div>
+          <div className="text-xs font-medium text-[#666666]">Qualified</div>
           <div className="mt-1 font-display text-2xl font-bold tabular-nums text-game-green">
-            {sum.depositedCount}
+            {sum.qualifiedReferrals}
+          </div>
+        </div>
+        <div className="card p-4 text-center">
+          <div className="text-xs font-medium text-[#666666]">Pending</div>
+          <div className="mt-1 font-display text-2xl font-bold tabular-nums text-accent-orange">
+            {sum.pendingReferrals}
+          </div>
+        </div>
+        <div className="card p-4 text-center">
+          <div className="text-xs font-medium text-[#666666]">Total earnings</div>
+          <div className="mt-1 flex items-center justify-center gap-1 font-display text-2xl font-bold tabular-nums text-game-gold">
+            <CoinIcon size={16} /> {coins(sum.totalEarningsFmt)}
           </div>
         </div>
       </div>

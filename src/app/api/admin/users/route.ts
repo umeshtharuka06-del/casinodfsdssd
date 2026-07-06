@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { applyBalance, COIN, fmtCoins } from "@/lib/wallet";
+import { computeUserMetrics } from "@/lib/admin-user-list";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest) {
   if (!admin) return fail("Forbidden.", 403);
 
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const statusFilter = req.nextUrl.searchParams.get("status") ?? "all"; // all|active|banned|admin
+  const vipFilter = Number(req.nextUrl.searchParams.get("vip") ?? "-1"); // -1 = any, else min level
+  const format = req.nextUrl.searchParams.get("format"); // "csv" for export
 
   // Search by username, email, referral code / referral link, or wallet address.
   //  • Referral code IS the user's id; a referral link contains it (…?ref=<id>),
@@ -56,27 +60,88 @@ export async function GET(req: NextRequest) {
     where = { OR: or };
   }
 
+  // Compose the search with the status / VIP filters (AND).
+  const and: import("@prisma/client").Prisma.UserWhereInput[] = [];
+  if (where) and.push(where);
+  if (statusFilter === "active") and.push({ isBanned: false });
+  else if (statusFilter === "banned") and.push({ isBanned: true });
+  else if (statusFilter === "admin") and.push({ isAdmin: true });
+  if (Number.isFinite(vipFilter) && vipFilter >= 0) and.push({ vipLevel: { gte: vipFilter } });
+  const finalWhere = and.length ? { AND: and } : undefined;
+
+  // CSV export streams a larger set; the interactive list is capped at 100.
+  const isCsv = format === "csv";
   const users = await prisma.user.findMany({
-    where,
+    where: finalWhere,
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: isCsv ? 5000 : 100,
     include: { wallet: true },
   });
 
-  return ok(
-    users.map((u) => ({
+  const metrics = await computeUserMetrics(users);
+  const rows = users.map((u) => {
+    const m = metrics.get(u.id);
+    return {
       id: u.id,
       email: u.email,
       username: u.username,
       isAdmin: u.isAdmin,
       isBanned: u.isBanned,
+      vipLevel: u.vipLevel,
+      vipOverride: u.vipOverride,
+      qualifiedReferrals: m?.qualifiedReferrals ?? 0,
+      totalDeposits: m?.totalDeposits ?? 0,
+      totalDepositsFmt: fmtCoins(m?.totalDeposits ?? 0),
+      totalWithdrawals: m?.totalWithdrawals ?? 0,
+      totalWithdrawalsFmt: fmtCoins(m?.totalWithdrawals ?? 0),
+      totalWinnings: m?.totalWinnings ?? 0,
+      totalWinningsFmt: fmtCoins(m?.totalWinnings ?? 0),
+      totalLoss: m?.totalLoss ?? 0,
+      totalLossFmt: fmtCoins(m?.totalLoss ?? 0),
+      netGain: m?.netGain ?? 0,
+      netGainFmt: fmtCoins(m?.netGain ?? 0),
       balance: u.wallet?.balance ?? 0,
       balanceFmt: fmtCoins(u.wallet?.balance ?? 0),
+      lastLogin: m?.lastLogin ?? null,
       referralCode: u.id, // the referral code is the user's id
       referredBy: u.referredBy ?? null,
       createdAt: u.createdAt.toISOString(),
-    }))
-  );
+    };
+  });
+
+  if (isCsv) {
+    const esc = (v: string | number) => {
+      let s = String(v);
+      // Neutralise spreadsheet formula injection (=, +, -, @, tab, CR leading char).
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      "Username", "Email", "UserId", "VIP", "QualifiedReferrals", "TotalDeposits",
+      "TotalWithdrawals", "TotalWinnings", "TotalLoss", "NetGain", "Balance",
+      "LastLogin", "Registered", "Status",
+    ];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      lines.push(
+        [
+          esc(r.username), esc(r.email), esc(r.id), r.vipLevel, r.qualifiedReferrals,
+          esc(r.totalDepositsFmt), esc(r.totalWithdrawalsFmt), esc(r.totalWinningsFmt),
+          esc(r.totalLossFmt), esc(r.netGainFmt), esc(r.balanceFmt),
+          esc(r.lastLogin ?? "—"), esc(r.createdAt), r.isBanned ? "Banned" : "Active",
+        ].join(",")
+      );
+    }
+    return new Response(lines.join("\n"), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="users-${new Date().toISOString().slice(0, 10)}.csv"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  return ok(rows);
 }
 
 const actionSchema = z.object({

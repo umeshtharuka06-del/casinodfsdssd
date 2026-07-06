@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { OverviewTab } from "@/components/admin/OverviewTab";
+import { FinancialTab } from "@/components/admin/FinancialTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { GameHistoryTab } from "@/components/admin/GameHistoryTab";
 import { LogsTab } from "@/components/admin/LogsTab";
@@ -15,6 +16,7 @@ import { DepositWalletsTab } from "@/components/admin/DepositWalletsTab";
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "financial", label: "Financial" },
   { key: "users", label: "Users" },
   { key: "force", label: "Force Result" },
   { key: "deposits", label: "Deposits" },
@@ -62,6 +64,7 @@ export default function AdminPage() {
       </div>
 
       {tab === "overview" && <OverviewTab />}
+      {tab === "financial" && <FinancialTab />}
       {tab === "users" && <UsersTab />}
       {tab === "force" && <ForceResultTab />}
       {tab === "deposits" && <DepositsTab />}

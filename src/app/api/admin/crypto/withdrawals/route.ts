@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { applyBalance, fmtCoins } from "@/lib/wallet";
 import { adminWithdrawActionSchema, firstError } from "@/lib/validation";
+import { getCryptoConfig, usdtToCoinCents } from "@/lib/crypto/config";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { notifyWithdrawResolved } from "@/lib/telegram";
@@ -89,6 +90,24 @@ export async function POST(req: NextRequest) {
         where: { id },
         data: { status: "COMPLETED", adminId: admin.id, txid: txid!, processedAt: new Date() },
       });
+      // Record the collected withdrawal fee as platform revenue (Part 3 analytics).
+      // Idempotent via the unique withdrawalId; best-effort — never fails the action.
+      try {
+        const { coinsPerUsdt } = await getCryptoConfig();
+        const feeCoins = usdtToCoinCents(w.feeUsdt, coinsPerUsdt);
+        await prisma.withdrawFee.upsert({
+          where: { withdrawalId: w.id },
+          update: {},
+          create: { withdrawalId: w.id, userId: w.userId, feeUsdt: w.feeUsdt, feeCoins },
+        });
+        if (feeCoins > 0) {
+          await prisma.financialLedger.create({
+            data: { type: "WITHDRAW_FEE", amount: feeCoins, ref: w.id, userId: w.userId },
+          });
+        }
+      } catch (e) {
+        console.error("[withdraw] fee record failed:", e);
+      }
     }
 
     await audit(`crypto.withdraw.${action}`, { userId: admin.id, detail: { id, txid } });

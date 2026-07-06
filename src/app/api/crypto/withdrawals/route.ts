@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { applyBalance, getBalance, fmtCoins, COIN } from "@/lib/wallet";
 import { getCryptoConfig, coinsToCents } from "@/lib/crypto/config";
 import { cryptoWithdrawSchema, firstError } from "@/lib/validation";
+import { checkWithdrawalEligibility } from "@/lib/withdrawal-eligibility";
 import { ok, fail, handleError } from "@/lib/http";
 import { rateLimit } from "@/lib/ratelimit";
 import { audit } from "@/lib/audit";
@@ -79,6 +80,23 @@ export async function POST(req: NextRequest) {
   const feeUsdt = cfg.withdrawFeeUsdt;
   const receiveUsdt = +(usdt - feeUsdt).toFixed(6);
   if (receiveUsdt <= 0) return fail("Amount does not cover the withdrawal fee.");
+
+  // Anti-abuse / AML limits (Part 8) + eligibility (Part 9). Transparent: the
+  // user is told the accurate reason; every threshold is admin-configurable.
+  const eligibility = await checkWithdrawalEligibility({
+    userId: user.id,
+    coinsCents: cents,
+    usdt,
+    feeUsdt,
+    receiveUsdt,
+  });
+  if (!eligibility.ok) {
+    await audit("crypto.withdraw.blocked", {
+      userId: user.id,
+      detail: { reason: eligibility.reason, ...eligibility.detail },
+    });
+    return fail(eligibility.message ?? "Withdrawal not permitted.", 400, eligibility.reason);
+  }
 
   try {
     const w = await prisma.$transaction(async (tx) => {

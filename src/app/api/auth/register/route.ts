@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSessionCookie } from "@/lib/auth";
-import { registerSchema, firstError } from "@/lib/validation";
+import { registerSchema, firstError, isPlausibleUserId } from "@/lib/validation";
 import { ok, fail } from "@/lib/http";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { randomServerSeed } from "@/lib/fair";
 import { audit } from "@/lib/audit";
 import { notifyNewUser } from "@/lib/telegram";
+import { ensureQualificationPending } from "@/lib/referral-qualification";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   // impossible (the new user doesn't exist yet) and existing users can't be
   // reassigned later.
   let referredBy: string | null = null;
-  if (ref && /^[a-f0-9]{24}$/i.test(ref)) {
+  if (ref && isPlausibleUserId(ref)) {
     const referrer = await prisma.user.findUnique({ where: { id: ref } });
     if (referrer) referredBy = referrer.id;
   }
@@ -53,6 +54,9 @@ export async function POST(req: NextRequest) {
   });
 
   await audit("user.register", { userId: user.id, ip, detail: { username, referredBy } });
+  // Track the referral as PENDING (it only counts once the user makes an
+  // approved deposit — see markReferralQualified). Best-effort, never blocks signup.
+  if (referredBy) await ensureQualificationPending(user.id, referredBy).catch(() => {});
   await notifyNewUser({ username: user.username, uid: user.id });
   await createSessionCookie({
     sub: user.id,

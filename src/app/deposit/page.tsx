@@ -9,6 +9,7 @@ import { useUser } from "@/lib/user-context";
 import { CoinIcon } from "@/components/CoinIcon";
 import { RechargeIcon } from "@/components/icons";
 import { AmountInput } from "@/components/AmountInput";
+import { VipBanner } from "@/components/VipBanner";
 import { coins } from "@/lib/fmt";
 
 interface Wallet {
@@ -133,6 +134,9 @@ export default function DepositPage() {
           ← Back
         </Link>
       </div>
+
+      {/* VIP promotional banner (closable, admin-configurable) */}
+      <VipBanner variant="deposit" />
 
       {success && (
         <div className="card flex items-center gap-3 border-game-green/40 bg-game-green/10 p-4">

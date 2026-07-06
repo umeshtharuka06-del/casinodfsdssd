@@ -6,6 +6,7 @@ import { api } from "@/lib/client";
 import { useUser } from "@/lib/user-context";
 import { CoinIcon } from "@/components/CoinIcon";
 import { Landing } from "@/components/Landing";
+import { VipBanner } from "@/components/VipBanner";
 import { coins } from "@/lib/fmt";
 import {
   MegaphoneIcon,
@@ -79,6 +80,9 @@ export default function HomePage() {
 
   return (
     <div className="content-col space-y-4 px-3 pb-28 pt-3 sm:px-4">
+      {/* VIP promotional banner (closable, admin-configurable) */}
+      <VipBanner variant="home" />
+
       {/* Announcement */}
       <div className="card flex items-start gap-3 p-4">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-royal-blue text-white">
