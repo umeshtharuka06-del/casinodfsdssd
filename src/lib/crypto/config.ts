@@ -28,7 +28,7 @@ export async function getCryptoConfig(): Promise<CryptoConfig> {
     autoCredit: s.crypto_auto_credit !== "false",
     usdtContract: (s.crypto_usdt_contract || "").trim(),
     minDepositUsdt: num("crypto_min_deposit_usdt", 10),
-    minWithdrawCoins: num("crypto_min_withdraw_coins", 1000),
+    minWithdrawCoins: num("crypto_min_withdraw_coins", 1100),
     withdrawFeeUsdt: num("crypto_withdraw_fee_usdt", 1),
     coinsPerUsdt: num("crypto_coins_per_usdt", 100),
     confirmations: num("crypto_confirmations", 20),

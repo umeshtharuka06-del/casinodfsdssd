@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { BrandLogo } from "@/components/BrandLogo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CMS-managed Telegram sections (Admin → Config):
@@ -64,8 +65,9 @@ export function TelegramChannelCard({ content }: { content: ChannelContent }) {
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center gap-3 p-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-royal-blue text-white">
-          <TelegramIcon className="h-6 w-6" />
+        {/* Mega 99 brand emblem — platform branding rather than a Telegram mark */}
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-black/5">
+          <BrandLogo size={40} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold text-[#111111]">{content.title}</div>

@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   crypto_auto_credit: "true",
   crypto_usdt_contract: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // official USDT TRC20 contract
   crypto_min_deposit_usdt: "10",
-  crypto_min_withdraw_coins: "1000", // = 10 USDT at 100 coins/USDT
+  crypto_min_withdraw_coins: "1100", // = 11 USDT at 100 coins/USDT
   crypto_withdraw_fee_usdt: "1",
   crypto_coins_per_usdt: "100",
   crypto_confirmations: "20",

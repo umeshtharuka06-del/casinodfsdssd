@@ -16,7 +16,7 @@ const PAYMENT_FIELDS: { key: string; label: string; hint: string }[] = [
   { key: "crypto_auto_credit", label: "Auto-credit deposits", hint: "true / false — poller credits matched transfers" },
   { key: "crypto_usdt_contract", label: "USDT contract", hint: "TRC20 USDT contract address" },
   { key: "crypto_min_deposit_usdt", label: "Minimum deposit (USDT)", hint: "Below this is rejected" },
-  { key: "crypto_min_withdraw_coins", label: "Minimum withdrawal (coins)", hint: "1000 = 10 USDT" },
+  { key: "crypto_min_withdraw_coins", label: "Minimum withdrawal (coins)", hint: "1100 = 11 USDT" },
   { key: "crypto_withdraw_fee_usdt", label: "Withdrawal fee (USDT)", hint: "Flat fee per withdrawal" },
   { key: "crypto_coins_per_usdt", label: "Coins per USDT", hint: "Conversion rate (e.g. 100)" },
   { key: "crypto_confirmations", label: "Confirmations", hint: "Blocks to wait (e.g. 20)" },

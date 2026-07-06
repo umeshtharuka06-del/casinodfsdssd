@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/lib/user-context";
 import { CoinIcon } from "./CoinIcon";
-import { BrandLogo } from "./BrandLogo";
+import { Wordmark } from "./Wordmark";
 import { coins } from "@/lib/fmt";
 
 const HIDE_ON = ["/login", "/register", "/admin"];
@@ -18,11 +18,10 @@ export function TopBar() {
     <header className="sticky top-0 z-40 bg-[#2D3987] shadow-[0_1px_2px_rgba(17,17,17,0.1)]">
       <div className="content-col">
         <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-          <Link href="/" className="flex items-center gap-2">
-            <BrandLogo size={32} priority />
-            <span className="font-display text-base font-bold tracking-tight text-white">
-              MEGA <span className="text-[#f6b738]">99</span>
-            </span>
+          <Link href="/" className="flex items-center" aria-label="Mega 99 home">
+            {/* Premium gold/red wordmark artwork — replaces the old text lockup.
+                Fixed height preserves the header height; width auto keeps aspect. */}
+            <Wordmark priority className="h-9" />
           </Link>
 
           {loading ? (
