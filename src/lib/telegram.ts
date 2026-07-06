@@ -51,13 +51,16 @@ function getTelegramConfig(): TelegramConfig {
   };
 }
 
+/** Inline URL button row(s) attached below a message (Telegram inline keyboard). */
+export type TelegramButton = { text: string; url: string };
+
 /**
  * Send a notification. Delivers INLINE (in-process) so a notification is never
  * lost to an undrained job queue. Guarded: never throws into the caller's
  * request flow. Returns true when Telegram accepted the message.
  */
-export async function sendTelegram(text: string): Promise<boolean> {
-  return deliverTelegram(text);
+export async function sendTelegram(text: string, buttons?: TelegramButton[]): Promise<boolean> {
+  return deliverTelegram(text, buttons);
 }
 
 /**
@@ -65,7 +68,7 @@ export async function sendTelegram(text: string): Promise<boolean> {
  * integration isn't configured (missing token or chat id) it LOGS the reason and
  * returns false — it never throws.
  */
-export async function deliverTelegram(text: string): Promise<boolean> {
+export async function deliverTelegram(text: string, buttons?: TelegramButton[]): Promise<boolean> {
   const cfg = getTelegramConfig();
   if (!cfg.enabled) {
     const reason = !cfg.botToken
@@ -74,10 +77,15 @@ export async function deliverTelegram(text: string): Promise<boolean> {
     console.warn(`[telegram] notification NOT sent — ${reason}`);
     return false;
   }
-  return rawSend(cfg.botToken, cfg.chatId, text);
+  return rawSend(cfg.botToken, cfg.chatId, text, buttons);
 }
 
-async function rawSend(botToken: string, chatId: string, text: string): Promise<boolean> {
+async function rawSend(
+  botToken: string,
+  chatId: string,
+  text: string,
+  buttons?: TelegramButton[]
+): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
@@ -89,6 +97,11 @@ async function rawSend(botToken: string, chatId: string, text: string): Promise<
         text,
         parse_mode: "HTML",
         disable_web_page_preview: true,
+        // Inline URL buttons (one per row). Telegram requires https URLs; the
+        // caller is responsible for only passing absolute links.
+        ...(buttons && buttons.length
+          ? { reply_markup: { inline_keyboard: buttons.map((b) => [b]) } }
+          : {}),
       }),
       signal: controller.signal,
     });
@@ -146,22 +159,53 @@ export async function notifyNewUser(p: { username: string; uid: string }) {
 
 export async function notifyDepositRequest(p: {
   username: string;
+  email?: string;
   uid: string;
   amountUsdt: number;
   coins: string;
   wallet: string;
+  txType?: string; // ONCHAIN | OFFCHAIN
+  txid?: string;
+  depositId?: string;
 }) {
   const cfg = getTelegramConfig();
   const large = p.amountUsdt >= cfg.largeDepositUsdt;
+  const offchain = p.txType === "OFFCHAIN";
+  const title = offchain
+    ? "🔍 Manual Deposit Review Required"
+    : large
+    ? "💰 New Deposit (LARGE)"
+    : "💰 New Deposit Request";
+
+  // Admin deep link. Telegram inline buttons require an absolute HTTPS URL and
+  // reject anything else (which would drop the whole message), so buttons are
+  // only attached when APP_URL is a proper https base. The URL is always also
+  // included as a text field so the link is available even without buttons.
+  const base = (process.env.APP_URL || "").trim().replace(/\/+$/, "");
+  const reviewUrl =
+    base && p.depositId ? `${base}/admin?tab=${offchain ? "manual" : "deposits"}&deposit=${p.depositId}` : "";
+  const buttons: TelegramButton[] | undefined =
+    reviewUrl && /^https:\/\//i.test(reviewUrl)
+      ? [
+          { text: "✅ Review & Approve", url: reviewUrl },
+          { text: "❌ Review & Reject", url: reviewUrl },
+        ]
+      : undefined;
+
   await sendTelegram(
-    format(large ? "💰 New Deposit (LARGE)" : "💰 New Deposit Request", {
+    format(title, {
       User: p.username,
+      Email: p.email,
       UID: p.uid,
       Amount: `${p.amountUsdt} USDT (${p.coins} coins)`,
+      Type: offchain ? "Off-chain (manual review)" : "On-chain",
+      TXID: p.txid,
       Wallet: p.wallet,
       Time: now(),
-      Status: "Pending",
-    })
+      Status: offchain ? "Pending manual review" : "Pending",
+      ...(reviewUrl ? { Review: reviewUrl } : {}),
+    }),
+    buttons
   );
 }
 

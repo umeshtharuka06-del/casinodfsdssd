@@ -35,6 +35,8 @@ interface Props<T> {
   pageSize?: number;
   minWidth?: number;
   emptyText?: string;
+  /** optional extra class for a row (e.g. highlight a deep-linked record) */
+  rowClassName?: (row: T) => string;
 }
 
 export function DataTable<T>({
@@ -50,6 +52,7 @@ export function DataTable<T>({
   pageSize = 10,
   minWidth = 720,
   emptyText = "No records.",
+  rowClassName,
 }: Props<T>) {
   const [query, setQuery] = useState("");
   const [from, setFrom] = useState("");
@@ -176,7 +179,7 @@ export function DataTable<T>({
               </tr>
             ) : (
               pageRows.map((r) => (
-                <tr key={rowKey(r)}>
+                <tr key={rowKey(r)} className={rowClassName?.(r) || undefined}>
                   {columns.map((c) => (
                     <td key={c.key} className={`py-2.5 pr-3 ${c.tdClassName ?? ""}`}>
                       {c.render ? c.render(r) : c.sort ? String(c.sort(r)) : null}

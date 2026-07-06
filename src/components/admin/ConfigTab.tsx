@@ -39,10 +39,41 @@ const FIELDS: { key: string; label: string; hint: string }[] = [
   { key: "vip5_signal_group", label: "VIP5 signal group", hint: "Reward channel name" },
   { key: "vip5_daily_login_bonus_usdt", label: "VIP5 daily login bonus (USDT)", hint: "Daily login bonus" },
 
-  // ── VIP banner (Part 6) ──
+  // ── VIP banner (deposit page) ──
   { key: "vip_banner_enabled", label: "VIP banner enabled", hint: "true / false" },
   { key: "vip_banner_title", label: "VIP banner title", hint: "Headline shown on the banner" },
   { key: "vip_banner_text", label: "VIP banner text", hint: "Promotional copy shown on the banner" },
+
+  // ── VIP popup (home page modal) ──
+  { key: "vip_popup_enabled", label: "VIP popup enabled", hint: "true / false" },
+  { key: "vip_popup_title", label: "VIP popup title", hint: "Headline of the home-page modal" },
+  { key: "vip_popup_description", label: "VIP popup description", hint: "Subtitle copy of the modal" },
+  { key: "vip_popup_image", label: "VIP popup image URL", hint: "Optional image at the top of the modal" },
+  { key: "vip_popup_primary_text", label: "VIP popup primary button", hint: "Primary CTA label" },
+  { key: "vip_popup_primary_url", label: "VIP popup primary URL", hint: "Primary CTA destination (e.g. /deposit)" },
+  { key: "vip_popup_secondary_text", label: "VIP popup secondary button", hint: "Secondary CTA label" },
+  { key: "vip_popup_secondary_url", label: "VIP popup secondary URL", hint: "Secondary CTA destination (e.g. /vip)" },
+  { key: "vip_popup_delay_seconds", label: "VIP popup delay (s)", hint: "Seconds after page load before showing" },
+  { key: "vip_popup_interval_hours", label: "VIP popup interval (h)", hint: "Hours before the popup re-appears" },
+
+  // ── Free signal channel (CMS) ──
+  { key: "tg_channel_enabled", label: "Signal channel enabled", hint: "true / false (needs a URL to show)" },
+  { key: "tg_channel_title", label: "Signal channel title", hint: "Section headline" },
+  { key: "tg_channel_description", label: "Signal channel description", hint: "Section copy" },
+  { key: "tg_channel_button", label: "Signal channel button", hint: "CTA label" },
+  { key: "tg_channel_url", label: "Signal channel URL", hint: "https://t.me/… (empty hides the section)" },
+  { key: "tg_channel_order", label: "Signal channel order", hint: "Display order on the Mine page" },
+  { key: "tg_channel_show_home", label: "Signal channel on Home", hint: "true / false — also show on Home" },
+
+  // ── Telegram support (CMS) ──
+  { key: "tg_support_enabled", label: "Support section enabled", hint: "true / false (needs a URL to show)" },
+  { key: "tg_support_title", label: "Support title", hint: "Section headline" },
+  { key: "tg_support_description", label: "Support description", hint: "Section copy" },
+  { key: "tg_support_username", label: "Support username", hint: "Telegram @username (shown to users)" },
+  { key: "tg_support_url", label: "Support URL", hint: "https://t.me/… (empty hides the section)" },
+  { key: "tg_support_status", label: "Support status", hint: "Status label, e.g. Online" },
+  { key: "tg_support_button", label: "Support button", hint: "CTA label" },
+  { key: "tg_support_order", label: "Support order", hint: "Display order on the Mine page" },
 
   // ── Withdrawal limits (Part 8) ──
   { key: "withdraw_limits_enabled", label: "Withdrawal limits enabled", hint: "true / false" },

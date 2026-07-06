@@ -14,6 +14,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const isRegister = mode === "register";
 
@@ -34,12 +35,18 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       setError("Please fill in all fields.");
       return;
     }
+    if (isRegister && !acceptTerms) {
+      setError("Please accept the Terms & Conditions to continue.");
+      return;
+    }
 
     setBusy(true);
     setError("");
     const ref = params.get("ref") || undefined;
     const path = isRegister ? "/api/auth/register" : "/api/auth/login";
-    const json = isRegister ? { email, username, password, ref } : { email, password };
+    const json = isRegister
+      ? { email, username, password, ref, acceptTerms }
+      : { email, password };
     const res = await api(path, { json });
     setBusy(false);
 
@@ -118,6 +125,27 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
           </div>
 
+          {isRegister && (
+            <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#0B57D0]"
+              />
+              <span>
+                I agree to the{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="font-semibold text-royal-blue-bright underline underline-offset-2"
+                >
+                  Terms &amp; Conditions
+                </Link>
+              </span>
+            </label>
+          )}
+
           {error && (
             <div
               role="alert"
@@ -127,7 +155,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
           )}
 
-          <button disabled={busy} className="btn-blue w-full">
+          <button disabled={busy || (isRegister && !acceptTerms)} className="btn-blue w-full">
             {busy ? "Please wait…" : isRegister ? "Create account" : "Log in"}
           </button>
         </form>

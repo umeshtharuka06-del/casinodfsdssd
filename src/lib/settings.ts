@@ -79,11 +79,43 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   vip5_signal_group: "VIP5 Signal Group",
   vip5_daily_login_bonus_usdt: "300",
 
-  // ── VIP promotional banner (Part 6) ──
+  // ── VIP promotional banner (deposit page) ──
   vip_banner_enabled: "true",
   vip_banner_title: "Unlock VIP Rewards",
   vip_banner_text:
     "Climb the VIP ladder for exclusive signal groups, guaranteed daily signals, priority support and daily login bonuses. The more you play, the more you unlock.",
+
+  // ── VIP popup (home page modal — replaces the permanent home banner) ──
+  vip_popup_enabled: "true",
+  vip_popup_title: "Unlock VIP Rewards",
+  vip_popup_description:
+    "Deposit more and unlock exclusive VIP signal groups, priority support, cashback rewards and daily bonuses.",
+  vip_popup_image: "", // optional image URL shown at the top of the popup
+  vip_popup_primary_text: "Deposit to Unlock VIP Signals",
+  vip_popup_primary_url: "/deposit",
+  vip_popup_secondary_text: "View VIP Benefits",
+  vip_popup_secondary_url: "/vip",
+  vip_popup_delay_seconds: "2", // wait N seconds after page load before showing
+  vip_popup_interval_hours: "24", // re-show after this many hours
+
+  // ── Free signal channel section (CMS) ──
+  tg_channel_enabled: "true",
+  tg_channel_title: "Free VIP Signals",
+  tg_channel_description: "Join our free signal channel and receive daily winning signals.",
+  tg_channel_button: "Join Telegram",
+  tg_channel_url: "",
+  tg_channel_order: "1", // display order among the Mine-page CMS sections
+  tg_channel_show_home: "false", // also show the section on the Home page
+
+  // ── Telegram support section (CMS) ──
+  tg_support_enabled: "true",
+  tg_support_title: "Telegram Support",
+  tg_support_description: "Questions about deposits, withdrawals or your account? We're here 24/7.",
+  tg_support_username: "",
+  tg_support_url: "",
+  tg_support_status: "Online",
+  tg_support_button: "Contact Support",
+  tg_support_order: "2",
 
   // ── Withdrawal limits (Part 8) — transparent, configurable ──
   // Anti-abuse limits. Users see the accurate reason when a rule blocks them.

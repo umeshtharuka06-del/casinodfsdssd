@@ -59,7 +59,9 @@ export async function runDepositPoll(): Promise<PollResult> {
   const nowBlock = await getNowBlock();
 
   // ── 1) Match new transfers to not-yet-matched requests (no txid) ──────────
-  const unmatched = pending.filter((d) => !d.txid && d.toAddress);
+  // OFFCHAIN requests are excluded: their reference is not an on-chain txid and
+  // they must only ever be credited via manual admin review.
+  const unmatched = pending.filter((d) => !d.txid && d.toAddress && d.txType !== "OFFCHAIN");
   const byWallet = new Map<string, typeof unmatched>();
   for (const d of unmatched) {
     if (!d.toAddress) continue; // legacy/invalid row without an assigned wallet
@@ -112,8 +114,11 @@ export async function runDepositPoll(): Promise<PollResult> {
   }
 
   // ── 2) Advance matched (txid set) PENDING requests toward confirmation ────
+  // OFFCHAIN excluded: a user-pasted off-chain reference must never be treated
+  // as a chain txid (it could coincide with a real, unrelated transaction and
+  // trigger an auto-credit). Manual review is the only path for those.
   const awaiting = await prisma.deposit.findMany({
-    where: { status: "PENDING", txid: { not: null } },
+    where: { status: "PENDING", txid: { not: null }, txType: { not: "OFFCHAIN" } },
     take: 100,
   });
 

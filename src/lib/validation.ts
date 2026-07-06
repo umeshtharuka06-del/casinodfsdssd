@@ -12,12 +12,20 @@ export const cryptoWithdrawSchema = z.object({
   coins: z.number().int().positive().max(100_000_000),
 });
 
-/** User deposit request — "I Have Paid". `txid` is optional (the poller can also
- *  detect it automatically). */
-export const cryptoDepositSchema = z.object({
-  amountUsdt: z.number().positive().max(1_000_000),
-  txid: z.string().trim().max(120).optional(),
-});
+/** User deposit request — "I Have Paid".
+ *  ONCHAIN: `txid` optional (the poller can also detect the transfer).
+ *  OFFCHAIN: `txid` (the internal/exchange reference) is REQUIRED — it cannot be
+ *  chain-verified, so the request always goes to manual admin review. */
+export const cryptoDepositSchema = z
+  .object({
+    amountUsdt: z.number().positive().max(1_000_000),
+    txType: z.enum(["ONCHAIN", "OFFCHAIN"]).default("ONCHAIN"),
+    txid: z.string().trim().max(120).optional(),
+  })
+  .refine((d) => d.txType !== "OFFCHAIN" || (d.txid && d.txid.length >= 6), {
+    message: "Enter the off-chain transaction reference so our team can verify it.",
+    path: ["txid"],
+  });
 
 /** Admin action on a deposit request. */
 export const adminDepositActionSchema = z.object({
@@ -71,6 +79,11 @@ export const registerSchema = z.object({
     .max(100),
   // Optional referral code = the referrer's userId (25-char cuid).
   ref: z.string().trim().max(40).optional(),
+  // Terms & Conditions acceptance is mandatory (enforced server-side too, not
+  // just by the disabled submit button).
+  acceptTerms: z
+    .boolean({ required_error: "You must accept the Terms & Conditions." })
+    .refine((v) => v === true, "You must accept the Terms & Conditions."),
 });
 
 export const loginSchema = z.object({
@@ -91,8 +104,10 @@ export const changePasswordSchema = z
     path: ["newPassword"],
   });
 
-// Minimum stake everywhere is 50 coins (= 5000 coin-cents).
-export const MIN_BET_CENTS = 50 * 100;
+// Minimum stakes (coin-cents). Colour/number prediction requires 100 coins;
+// Crash keeps the original 50-coin minimum.
+export const MIN_PREDICTION_BET_CENTS = 100 * 100;
+export const MIN_CRASH_BET_CENTS = 50 * 100;
 
 /** Integrated prediction game: selection is a colour OR a digit "0".."9". */
 export const predictionBetSchema = z.object({
@@ -107,7 +122,7 @@ export const predictionBetSchema = z.object({
   amount: z
     .number()
     .int()
-    .min(MIN_BET_CENTS, "Minimum bet is 50 coins.")
+    .min(MIN_PREDICTION_BET_CENTS, "Minimum bet is 100 coins.")
     .max(1_000_000_00), // coin-cents
 });
 
@@ -115,7 +130,7 @@ export const crashBetSchema = z.object({
   amount: z
     .number()
     .int()
-    .min(MIN_BET_CENTS, "Minimum bet is 50 coins.")
+    .min(MIN_CRASH_BET_CENTS, "Minimum bet is 50 coins.")
     .max(1_000_000_00),
   // auto-cashout multiplier ×100; 0 = manual cashout only
   autoCashoutX: z.number().int().min(0).max(1_000_000),
