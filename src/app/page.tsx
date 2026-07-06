@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { useUser } from "@/lib/user-context";
@@ -17,7 +17,6 @@ import {
   RocketIcon,
   RechargeIcon,
   WithdrawIcon,
-  ReferralIcon,
   MODE_ICON,
 } from "@/components/icons";
 
@@ -26,26 +25,6 @@ interface Announcement {
   title: string;
   body: string;
 }
-
-interface Txn {
-  id: string;
-  type: string;
-  amountFmt: string;
-  amount: number;
-  createdAt: string;
-}
-
-const TXN_LABEL: Record<string, string> = {
-  SIGNUP_BONUS: "Welcome bonus",
-  BET: "Bet placed",
-  PAYOUT: "Payout",
-  ADMIN_CREDIT: "Admin credit",
-  ADMIN_DEBIT: "Admin debit",
-  DEPOSIT: "Deposit",
-  WITHDRAWAL: "Withdrawal",
-  WITHDRAWAL_REFUND: "Withdrawal refund",
-  REFERRAL_REWARD: "Referral reward",
-};
 
 const MODES = [
   { key: "PARITY", label: "Parity", color: "#4C6C06" },
@@ -57,7 +36,6 @@ const MODES = [
 export default function HomePage() {
   const { me, loading } = useUser();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [txns, setTxns] = useState<Txn[]>([]);
   const content = useSiteContent();
 
   useEffect(() => {
@@ -65,18 +43,6 @@ export default function HomePage() {
       (r) => r.ok && setAnnouncements(r.data || [])
     );
   }, []);
-
-  const loadTxns = useCallback(async () => {
-    const r = await api<{ transactions: Txn[] }>("/api/wallet");
-    if (r.ok && r.data) setTxns(r.data.transactions);
-  }, []);
-
-  useEffect(() => {
-    if (!me) return;
-    loadTxns();
-    const t = setInterval(loadTxns, 15000);
-    return () => clearInterval(t);
-  }, [me, loadTxns]);
 
   const ann = announcements[0];
 
@@ -134,23 +100,6 @@ export default function HomePage() {
       {/* Free signal channel (optional on Home, CMS-managed) */}
       {content?.channel.showHome && <TelegramChannelCard content={content.channel} />}
 
-      {/* Referral promotion */}
-      <Link
-        href="/referral"
-        className="flex items-center gap-3 rounded-2xl bg-[#8B5CF6] p-4 shadow-[0_1px_2px_rgba(17,17,17,0.1)] transition hover:brightness-95 active:scale-[0.99]"
-      >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/25 text-white">
-          <ReferralIcon className="h-6 w-6" />
-        </span>
-        <div className="flex-1">
-          <div className="text-sm font-bold text-white">Invite friends, earn rewards</div>
-          <div className="text-xs font-medium text-white/90">
-            Get 4 USDT in coins for every friend&apos;s first deposit.
-          </div>
-        </div>
-        <span className="text-white">→</span>
-      </Link>
-
       {/* Game cards */}
       <section>
         <h2 className="mb-2.5 px-1 text-base font-bold text-white">Games</h2>
@@ -191,40 +140,6 @@ export default function HomePage() {
           <span className="text-royal-blue-bright">→</span>
         </Link>
       </section>
-
-      {/* Recent activity */}
-      {txns.length > 0 && (
-        <section className="card overflow-hidden">
-          <div className="panel-head rounded-t-2xl">
-            <span>Recent activity</span>
-            <Link href="/transactions" className="text-xs font-semibold text-white/90">
-              View all →
-            </Link>
-          </div>
-          <div className="divide-y divide-black/5 px-4">
-            {txns.slice(0, 5).map((t) => (
-              <div key={t.id} className="flex items-center justify-between py-2.5">
-                <div>
-                  <div className="text-sm font-semibold text-[#111111]">
-                    {TXN_LABEL[t.type] || t.type}
-                  </div>
-                  <div className="text-[11px] font-medium text-[#777777]">
-                    {new Date(t.createdAt).toLocaleString()}
-                  </div>
-                </div>
-                <div
-                  className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
-                    t.amount >= 0 ? "text-game-green" : "text-[#444444]"
-                  }`}
-                >
-                  {t.amount >= 0 ? "+" : ""}
-                  <CoinIcon /> {coins(t.amountFmt)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

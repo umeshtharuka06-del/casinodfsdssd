@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/client";
 import { useUser } from "@/lib/user-context";
 import { CoinIcon } from "@/components/CoinIcon";
 import {
@@ -14,59 +13,20 @@ import {
   ReferralIcon,
   RechargeIcon,
   WithdrawIcon,
+  WalletIcon,
 } from "@/components/icons";
 import { ChangePassword } from "@/components/ChangePassword";
-import {
-  TelegramChannelCard,
-  TelegramSupportCard,
-  useSiteContent,
-} from "@/components/TelegramSections";
+import { TelegramSupportCard, useSiteContent } from "@/components/TelegramSections";
 import { coins } from "@/lib/fmt";
-
-interface Txn {
-  id: string;
-  type: string;
-  amountFmt: string;
-  amount: number;
-  createdAt: string;
-}
-
-const LABEL: Record<string, string> = {
-  SIGNUP_BONUS: "Welcome bonus",
-  BET: "Bet placed",
-  PAYOUT: "Payout",
-  ADMIN_CREDIT: "Admin credit",
-  ADMIN_DEBIT: "Admin debit",
-  DEPOSIT: "Deposit",
-  WITHDRAWAL: "Withdrawal",
-  WITHDRAWAL_REFUND: "Withdrawal refund",
-  REFERRAL_REWARD: "Referral reward",
-};
-
-const TXN_PREVIEW = 6;
 
 export default function MinePage() {
   const { me, loading, logout } = useUser();
   const router = useRouter();
-  const [txns, setTxns] = useState<Txn[]>([]);
   const content = useSiteContent();
 
   useEffect(() => {
     if (!loading && !me) router.replace("/login?next=/mine");
   }, [loading, me, router]);
-
-  const loadTxns = useCallback(async () => {
-    const r = await api<{ transactions: Txn[] }>("/api/wallet");
-    if (r.ok && r.data) setTxns(r.data.transactions);
-  }, []);
-
-  // Poll transactions so payouts/credits appear without a manual refresh.
-  useEffect(() => {
-    if (!me) return;
-    loadTxns();
-    const t = setInterval(loadTxns, 8000);
-    return () => clearInterval(t);
-  }, [me, loadTxns]);
 
   if (!me) {
     return (
@@ -136,65 +96,21 @@ export default function MinePage() {
         <span className="text-slate-500">›</span>
       </Link>
 
-      {/* Free signal channel + Telegram support (CMS-managed, ordered) */}
-      {content &&
-        [
-          { key: "channel", order: content.channel.order, node: <TelegramChannelCard content={content.channel} /> },
-          { key: "support", order: content.support.order, node: <TelegramSupportCard content={content.support} /> },
-        ]
-          .sort((a, b) => a.order - b.order)
-          .map((s) => <div key={s.key}>{s.node}</div>)}
+      {/* Telegram support — sits directly after Promotion (the Free VIP Signals
+          channel lives only on the Home page). */}
+      {content && <TelegramSupportCard content={content.support} />}
 
-      {/* Transactions — preview only; the full ledger lives on /transactions */}
-      <div className="card p-4">
-        <Link
-          href="/transactions"
-          className="mb-3 flex items-center justify-between"
-        >
-          <h2 className="text-sm font-semibold">Transactions</h2>
-          <span className="text-xs font-semibold text-royal-blue-bright">
-            View all →
-          </span>
-        </Link>
-        {txns.length === 0 ? (
-          <div className="py-6 text-center text-sm text-slate-500">
-            No transactions yet.
-          </div>
-        ) : (
-          <div className="divide-y divide-black/5">
-            {txns.slice(0, TXN_PREVIEW).map((t) => (
-              <div key={t.id} className="flex items-center justify-between py-2.5">
-                <div>
-                  <div className="text-sm font-medium text-slate-200">
-                    {LABEL[t.type] || t.type}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    {new Date(t.createdAt).toLocaleString()}
-                  </div>
-                </div>
-                <div
-                  className={`flex items-center gap-1 text-sm font-semibold tabular-nums ${
-                    t.amount >= 0 ? "text-game-green" : "text-slate-300"
-                  }`}
-                >
-                  {t.amount >= 0 ? "+" : ""}
-                  <CoinIcon /> {coins(t.amountFmt)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Quick links — Promotion intentionally omitted here: the referral
-          shortcut card above is the single Promotion entry. */}
+      {/* Quick links — Game History, My Bets, Transaction History (opens the
+          dedicated /transactions page), then Admin for staff. Promotion is the
+          referral card above; the signal channel is Home-only. */}
       <div className="card divide-y divide-black/5 p-2">
         <Row href="/history" icon={HistoryIcon} label="Game history" />
         <Row href="/mywin" icon={TrophyIcon} label="My bets" />
+        <Row href="/transactions" icon={WalletIcon} label="Transaction history" />
         {me.isAdmin && <Row href="/admin" icon={AdminIcon} label="Admin panel" />}
       </div>
 
-      {/* Change password */}
+      {/* Settings */}
       <ChangePassword />
 
       <div className="px-1 text-center text-[11px] text-white/70">
