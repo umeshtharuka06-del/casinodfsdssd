@@ -17,11 +17,14 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 bg-[#2D3987] shadow-[0_1px_2px_rgba(17,17,17,0.1)]">
       <div className="content-col">
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+        {/* Fixed row height keeps the header height constant even as the logo
+            grows; items-center vertically centres the logo and balance widget. */}
+        <div className="flex h-14 items-center justify-between gap-3 px-4">
           <Link href="/" className="flex items-center" aria-label="Mega 99 home">
-            {/* Premium gold/red wordmark artwork — replaces the old text lockup.
-                Fixed height preserves the header height; width auto keeps aspect. */}
-            <Wordmark priority className="h-9" />
+            {/* Premium gold/red wordmark artwork (with text fallback on load
+                error). h-[42px] is ~17% larger than the previous h-9 (36px);
+                width auto preserves aspect ratio (no stretch). */}
+            <Wordmark priority className="h-[42px]" />
           </Link>
 
           {loading ? (
