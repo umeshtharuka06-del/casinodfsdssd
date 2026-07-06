@@ -19,6 +19,7 @@ export interface Me {
   balanceFmt: string;
   clientSeed?: string;
   createdAt: string;
+  vipLevel?: number;
 }
 
 interface UserCtx {

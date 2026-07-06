@@ -141,10 +141,23 @@ export const announcementSchema = z.object({
 
 export const settingSchema = z.object({
   key: z.string().min(1).max(60),
-  value: z.string().max(200),
+  // Raised from 200 to accommodate longer configurable text (e.g. the VIP
+  // promotional banner copy) edited from the admin panel.
+  value: z.string().max(4000),
 });
 
 /** Helper that returns a flat error message for the first failed field. */
 export function firstError(err: z.ZodError): string {
   return err.errors[0]?.message ?? "Invalid input";
+}
+
+/**
+ * True for a plausible user id / referral code. IDs are `cuid()` (25 chars,
+ * "c"-prefixed, [a-z0-9]); some legacy rows use a 24-char hex id. Accept both.
+ * A non-match is only ever a 404/ignored path (the value still goes through a
+ * parameterised Prisma query), so this is a lightweight guard, not a security
+ * boundary.
+ */
+export function isPlausibleUserId(s: string): boolean {
+  return /^(c[a-z0-9]{24}|[a-f0-9]{24})$/i.test(s);
 }

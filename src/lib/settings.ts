@@ -47,6 +47,66 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   // 0.4 = the heavy side wins ~4 rounds out of 10. The website only stores this
   // value; the engine service (engine-royal/) reads it when settling rounds.
   prediction_heavy_win_rate: "0.4",
+
+  // ── Referral qualification ──
+  // A referral only counts once the referred user completes ≥1 approved deposit.
+  // Registration alone never counts. When disabled, qualification tracking is
+  // skipped (existing ReferralReward flow is unaffected).
+  referral_qualification_enabled: "true",
+
+  // ── VIP tiers ──
+  // A user reaches a tier by meeting its deposit threshold OR (for tiers where
+  // it is > 0) its qualified-referral threshold. A referral threshold of 0
+  // disables the referral path for that tier (VIP4/VIP5 are deposit-only).
+  // `_signal_group` is the Telegram/signal channel name granted at that tier.
+  vip_enabled: "true",
+  vip1_min_deposit_usdt: "1000",
+  vip1_min_referrals: "50",
+  vip1_signal_group: "VIP1 Signal Group",
+  vip2_min_deposit_usdt: "3000",
+  vip2_min_referrals: "150",
+  vip2_signal_group: "VIP2 Signal Group",
+  vip3_min_deposit_usdt: "5000",
+  vip3_min_referrals: "250",
+  vip3_signal_group: "VIP3 Signal Group",
+  vip4_min_deposit_usdt: "10000",
+  vip4_min_referrals: "0", // deposit-only tier
+  vip4_signal_group: "VIP4 Signal Group",
+  vip4_daily_signals: "10", // guaranteed daily signals
+  vip4_priority_support: "true",
+  vip5_min_deposit_usdt: "50000",
+  vip5_min_referrals: "0", // deposit-only tier
+  vip5_signal_group: "VIP5 Signal Group",
+  vip5_daily_login_bonus_usdt: "300",
+
+  // ── VIP promotional banner (Part 6) ──
+  vip_banner_enabled: "true",
+  vip_banner_title: "Unlock VIP Rewards",
+  vip_banner_text:
+    "Climb the VIP ladder for exclusive signal groups, guaranteed daily signals, priority support and daily login bonuses. The more you play, the more you unlock.",
+
+  // ── Withdrawal limits (Part 8) — transparent, configurable ──
+  // Anti-abuse limits. Users see the accurate reason when a rule blocks them.
+  withdraw_limits_enabled: "true",
+  withdraw_daily_max_usdt: "300", // max total sent per rolling 24h
+  withdraw_min_usdt: "11", // minimum request amount
+  withdraw_receive_floor_usdt: "10", // user must net at least this after fee
+
+  // ── Withdrawal eligibility (Part 9) — transparent, configurable ──
+  // Anti-abuse gate preventing instant deposit→withdraw cycling. Requires a
+  // minimum number of qualified referrals AND a minimum net betting profit that
+  // scales with the user's total approved deposits. Users see the exact reason.
+  withdraw_eligibility_enabled: "true",
+  withdraw_min_qualified_referrals: "2",
+  // Net-profit tiers by total approved deposit (USDT). Each tier's max is the
+  // upper bound of the deposit band; the "above" value applies past the last tier.
+  withdraw_profit_t1_max_usdt: "50",
+  withdraw_profit_t1_usdt: "5",
+  withdraw_profit_t2_max_usdt: "100",
+  withdraw_profit_t2_usdt: "10",
+  withdraw_profit_t3_max_usdt: "500",
+  withdraw_profit_t3_usdt: "50",
+  withdraw_profit_above_usdt: "100",
 };
 
 export async function getSetting(key: string): Promise<string> {

@@ -1,5 +1,8 @@
 import { prisma } from "./db";
 import { fmtCoins } from "./wallet";
+import { getVipContext } from "./vip";
+import { getReferralQualificationStats } from "./referral-qualification";
+import { tierBenefits } from "./vip-display";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Admin — full user detail assembly.
@@ -163,6 +166,17 @@ export async function getAdminUserDetails(userId: string) {
 
   const tree = await buildReferralTree(user.id, user.username);
 
+  // Advanced business-logic detail (Part 10): VIP status + history, fee history,
+  // withdrawal-restriction history, admin notes, referral qualification stats.
+  const [vipCtx, qualStats, vipHistory, feeHistory, restrictions, notes] = await Promise.all([
+    getVipContext(userId),
+    getReferralQualificationStats(userId),
+    prisma.vIPHistory.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: HISTORY_LIMIT }),
+    prisma.houseTransaction.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: HISTORY_LIMIT }),
+    prisma.withdrawalRestriction.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: HISTORY_LIMIT }),
+    prisma.adminNote.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: HISTORY_LIMIT }),
+  ]);
+
   return {
     profile: {
       id: user.id,
@@ -242,6 +256,49 @@ export async function getAdminUserDetails(userId: string) {
       })),
       tree,
     },
+    vip: {
+      level: vipCtx.effectiveLevel,
+      computedLevel: vipCtx.computedLevel,
+      override: vipCtx.override,
+      totalDepositUsdt: vipCtx.totalDepositUsdt,
+      qualifiedReferrals: vipCtx.qualifiedReferrals,
+      benefits: vipCtx.tier ? tierBenefits(vipCtx.tier) : [],
+    },
+    referralQualification: {
+      invited: qualStats.invited,
+      qualified: qualStats.qualified,
+      pending: qualStats.pending,
+      rejected: qualStats.rejected,
+      adjustment: qualStats.adjustment,
+      effectiveQualified: qualStats.effectiveQualified,
+    },
+    vipHistory: vipHistory.map((h) => ({
+      id: h.id,
+      oldLevel: h.oldLevel,
+      newLevel: h.newLevel,
+      reason: h.reason,
+      createdAt: h.createdAt.toISOString(),
+    })),
+    feeHistory: feeHistory.map((f) => ({
+      id: f.id,
+      game: f.game,
+      feeFmt: fmtCoins(f.fee),
+      betId: f.betId,
+      createdAt: f.createdAt.toISOString(),
+    })),
+    restrictions: restrictions.map((r) => ({
+      id: r.id,
+      reason: r.reason,
+      coinsFmt: fmtCoins(r.coins),
+      detail: r.detail,
+      createdAt: r.createdAt.toISOString(),
+    })),
+    adminNotes: notes.map((n) => ({
+      id: n.id,
+      adminId: n.adminId,
+      body: n.body,
+      createdAt: n.createdAt.toISOString(),
+    })),
   };
 }
 

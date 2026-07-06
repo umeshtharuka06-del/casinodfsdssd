@@ -2,6 +2,7 @@ import { prisma } from "./db";
 import { applyBalance, fmtCoins } from "./wallet";
 import { getSettingNumber } from "./settings";
 import { usdtToCoinCents } from "./crypto/config";
+import { getReferralQualificationStats } from "./referral-qualification";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Referral rewards.
@@ -87,6 +88,12 @@ export interface ReferralSummary {
   claimedFmt: string;
   balance: number; // referral balance = pending + claimable
   balanceFmt: string;
+  // Qualification breakdown (Part 4): only approved-deposit referrals qualify.
+  qualifiedReferrals: number;
+  pendingReferrals: number;
+  rejectedReferrals: number;
+  totalEarnings: number; // coin-cents earned ever (pending + claimable + claimed)
+  totalEarningsFmt: string;
   rewards: Array<{
     id: string;
     username: string; // referred user
@@ -159,6 +166,9 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
   const rewarded = new Set(rewards.map((r) => r.referredUserId));
   const depositedCount = rewarded.size;
 
+  const qual = await getReferralQualificationStats(userId);
+  const totalEarnings = pending + claimable + claimed;
+
   return {
     code: userId,
     count,
@@ -171,6 +181,11 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     claimedFmt: fmtCoins(claimed),
     balance: pending + claimable,
     balanceFmt: fmtCoins(pending + claimable),
+    qualifiedReferrals: qual.effectiveQualified,
+    pendingReferrals: qual.pending,
+    rejectedReferrals: qual.rejected,
+    totalEarnings,
+    totalEarningsFmt: fmtCoins(totalEarnings),
     rewards: rewardRows,
     recent: invitees.map((u) => ({
       username: u.username,

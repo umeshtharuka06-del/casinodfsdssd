@@ -3,6 +3,8 @@ import { applyBalance, fmtCoins } from "@/lib/wallet";
 import { releaseWallet } from "./wallet-assign";
 import { notifyDepositApproved } from "@/lib/telegram";
 import { grantReferralRewardForDeposit } from "@/lib/referral";
+import { markReferralQualified } from "@/lib/referral-qualification";
+import { recomputeVipForUser } from "@/lib/vip";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Shared deposit settlement.
@@ -48,6 +50,23 @@ export async function approveDeposit(
   // were referred, the referrer earns a locked reward (referral balance —
   // never the main wallet). Idempotent + never breaks the credit above.
   await grantReferralRewardForDeposit({ id: updated.id, userId: updated.userId });
+
+  // Referral now COUNTS (qualified): the referred user has an approved deposit.
+  // Then recompute the depositor's VIP tier (their deposit total changed) and
+  // the referrer's tier (their qualified-referral count changed). All best-effort
+  // and fully isolated — the credit above already committed, so nothing here may
+  // throw into the caller or skip the wallet release / notification below.
+  try {
+    await markReferralQualified(updated.userId, updated.id);
+    await recomputeVipForUser(updated.userId, "AUTO_DEPOSIT");
+    const referrer = await prisma.user.findUnique({
+      where: { id: updated.userId },
+      select: { referredBy: true },
+    });
+    if (referrer?.referredBy) await recomputeVipForUser(referrer.referredBy, "AUTO_REFERRAL");
+  } catch (e) {
+    console.error("[deposit] post-credit VIP/qualification update failed:", e);
+  }
 
   await releaseWallet(updated.userId);
   const user = await prisma.user.findUnique({

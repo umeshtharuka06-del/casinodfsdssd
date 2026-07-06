@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/client";
 import { CoinIcon } from "@/components/CoinIcon";
+import { VipBadge } from "@/components/VipBadge";
 
 // ── Types mirror the /api/admin/users/[id] payload (src/lib/admin-user.ts) ──
 interface TreeNode {
@@ -85,6 +86,26 @@ interface Details {
     }>;
     tree: TreeNode;
   };
+  vip: {
+    level: number;
+    computedLevel: number;
+    override: number | null;
+    totalDepositUsdt: number;
+    qualifiedReferrals: number;
+    benefits: string[];
+  };
+  referralQualification: {
+    invited: number;
+    qualified: number;
+    pending: number;
+    rejected: number;
+    adjustment: number;
+    effectiveQualified: number;
+  };
+  vipHistory: Array<{ id: string; oldLevel: number; newLevel: number; reason: string; createdAt: string }>;
+  feeHistory: Array<{ id: string; game: string; feeFmt: string; betId: string; createdAt: string }>;
+  restrictions: Array<{ id: string; reason: string; coinsFmt: string; detail: string | null; createdAt: string }>;
+  adminNotes: Array<{ id: string; adminId: string; body: string; createdAt: string }>;
 }
 
 const fmtDate = (s: string) => new Date(s).toLocaleString();
@@ -100,9 +121,24 @@ const STATUS_CLS: Record<string, string> = {
   LOST: "text-game-red-bright",
 };
 
-export function UserDetailsDrawer({ userId, onClose }: { userId: string; onClose: () => void }) {
+export function UserDetailsDrawer({
+  userId,
+  onClose,
+  onChanged,
+}: {
+  userId: string;
+  onClose: () => void;
+  onChanged?: () => void;
+}) {
   const [data, setData] = useState<Details | null>(null);
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const reload = useCallback(async () => {
+    const res = await api<Details>(`/api/admin/users/${userId}`);
+    if (res.ok && res.data) setData(res.data);
+    else setErr(res.error || "Failed to load user.");
+  }, [userId]);
 
   useEffect(() => {
     let alive = true;
@@ -117,6 +153,22 @@ export function UserDetailsDrawer({ userId, onClose }: { userId: string; onClose
       alive = false;
     };
   }, [userId]);
+
+  // Run an admin action against this user, then refresh the drawer + parent list.
+  const runAction = useCallback(
+    async (payload: Record<string, unknown>) => {
+      setBusy(true);
+      const res = await api(`/api/admin/users/${userId}`, { json: payload });
+      setBusy(false);
+      if (!res.ok) {
+        setErr(res.error || "Action failed.");
+        return;
+      }
+      await reload();
+      onChanged?.();
+    },
+    [userId, reload, onChanged]
+  );
 
   // Close on Escape.
   useEffect(() => {
@@ -173,6 +225,75 @@ export function UserDetailsDrawer({ userId, onClose }: { userId: string; onClose
               <div className="flex items-center gap-2 text-lg font-black text-game-gold">
                 <CoinIcon /> {data.wallet.balanceFmt}
                 <span className="text-xs font-medium text-slate-400">coins</span>
+              </div>
+            </Section>
+
+            {/* VIP status + manual controls */}
+            <Section title="VIP status & controls">
+              <div className="flex flex-wrap items-center gap-2">
+                <VipBadge level={data.vip.level} showNone />
+                <span className="text-xs text-slate-400">
+                  Auto-computed: VIP{data.vip.computedLevel}
+                  {data.vip.override !== null && (
+                    <span className="ml-2 text-royal-blue-bright">· overridden to VIP{data.vip.override}</span>
+                  )}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Stat label="Total deposits" value={`$${data.vip.totalDepositUsdt.toLocaleString()}`} />
+                <Stat label="Qualified referrals" value={data.vip.qualifiedReferrals} />
+                <Stat label="Referral adjustment" value={data.referralQualification.adjustment} />
+              </div>
+              {data.vip.benefits.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-xs text-slate-300">
+                  {data.vip.benefits.map((b, i) => (
+                    <li key={i}>✓ {b}</li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Manual VIP override */}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-black/10 bg-black/[0.03] p-2.5">
+                  <div className="mb-1 text-[10px] uppercase text-slate-500">Manual VIP override</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[0, 1, 2, 3, 4, 5].map((lvl) => (
+                      <button
+                        key={lvl}
+                        disabled={busy}
+                        onClick={() => runAction({ action: "vipOverride", level: lvl })}
+                        className={`chip ${
+                          data.vip.override === lvl
+                            ? "bg-game-gold/25 text-game-gold"
+                            : "bg-black/5 text-slate-300"
+                        }`}
+                      >
+                        VIP{lvl}
+                      </button>
+                    ))}
+                    <button
+                      disabled={busy}
+                      onClick={() => runAction({ action: "vipOverride", level: null })}
+                      className="chip bg-royal-blue/15 text-royal-blue-bright"
+                    >
+                      Clear (auto)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Manual referral adjustment */}
+                <div className="rounded-lg border border-black/10 bg-black/[0.03] p-2.5">
+                  <div className="mb-1 text-[10px] uppercase text-slate-500">Manual referral adjustment</div>
+                  <ReferralAdjust current={data.referralQualification.adjustment} busy={busy} onSet={(n) => runAction({ action: "referralAdjust", adjustment: n })} />
+                </div>
+              </div>
+
+              {/* Qualification breakdown */}
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Stat label="Invited" value={data.referralQualification.invited} />
+                <Stat label="Qualified" value={data.referralQualification.qualified} />
+                <Stat label="Pending" value={data.referralQualification.pending} />
+                <Stat label="Rejected" value={data.referralQualification.rejected} />
               </div>
             </Section>
 
@@ -315,6 +436,52 @@ export function UserDetailsDrawer({ userId, onClose }: { userId: string; onClose
                 </div>
               )}
             </Section>
+
+            {/* VIP history */}
+            <Section title={`VIP history (${data.vipHistory.length})`}>
+              <Table
+                head={["Date", "From", "To", "Reason"]}
+                rows={data.vipHistory.map((h) => [
+                  fmtDate(h.createdAt),
+                  `VIP${h.oldLevel}`,
+                  `VIP${h.newLevel}`,
+                  h.reason,
+                ])}
+                empty="No VIP changes."
+              />
+            </Section>
+
+            {/* Fee history */}
+            <Section title={`Fee history (${data.feeHistory.length})`}>
+              <Table
+                head={["Date", "Game", "Fee", "Bet"]}
+                rows={data.feeHistory.map((f) => [
+                  fmtDate(f.createdAt),
+                  f.game,
+                  <span key="f" className="text-game-gold">{f.feeFmt}</span>,
+                  <span key="b" className="font-mono text-[10px]">{f.betId.slice(0, 10)}…</span>,
+                ])}
+                empty="No fees charged."
+              />
+            </Section>
+
+            {/* Withdrawal restriction history */}
+            <Section title={`Withdrawal restriction history (${data.restrictions.length})`}>
+              <Table
+                head={["Date", "Reason", "Attempted"]}
+                rows={data.restrictions.map((r) => [
+                  fmtDate(r.createdAt),
+                  <span key="r" className="text-game-red-bright">{r.reason}</span>,
+                  r.coinsFmt,
+                ])}
+                empty="No blocked withdrawals."
+              />
+            </Section>
+
+            {/* Admin notes */}
+            <Section title={`Admin notes (${data.adminNotes.length})`}>
+              <AdminNotes notes={data.adminNotes} busy={busy} onAdd={(body) => runAction({ action: "addNote", body })} />
+            </Section>
           </div>
         )}
       </div>
@@ -369,6 +536,91 @@ function Stat({ label, value, coin }: { label: string; value: string | number; c
     <div className="rounded-lg border border-black/10 bg-black/[0.03] px-2 py-1.5">
       <div className="text-[10px] uppercase text-slate-500">{label}</div>
       <div className={`font-bold ${coin ? "text-game-gold" : "text-[#111111]"}`}>{value}</div>
+    </div>
+  );
+}
+
+function ReferralAdjust({
+  current,
+  busy,
+  onSet,
+}: {
+  current: number;
+  busy: boolean;
+  onSet: (n: number) => void;
+}) {
+  const [val, setVal] = useState(String(current));
+  useEffect(() => setVal(String(current)), [current]);
+  return (
+    <div className="flex gap-2">
+      <input
+        type="number"
+        className="input !py-1.5 text-sm"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+      />
+      <button
+        disabled={busy}
+        onClick={() => {
+          const n = Number(val);
+          if (Number.isInteger(n)) onSet(n);
+        }}
+        className="btn-ghost !py-1.5 text-xs"
+      >
+        Set
+      </button>
+    </div>
+  );
+}
+
+function AdminNotes({
+  notes,
+  busy,
+  onAdd,
+}: {
+  notes: Array<{ id: string; body: string; createdAt: string }>;
+  busy: boolean;
+  onAdd: (body: string) => void;
+}) {
+  const [body, setBody] = useState("");
+  return (
+    <div>
+      <div className="mb-2 flex gap-2">
+        <input
+          className="input !py-1.5 text-sm"
+          placeholder="Add an internal note…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && body.trim()) {
+              onAdd(body.trim());
+              setBody("");
+            }
+          }}
+        />
+        <button
+          disabled={busy || !body.trim()}
+          onClick={() => {
+            onAdd(body.trim());
+            setBody("");
+          }}
+          className="btn-ghost !py-1.5 text-xs"
+        >
+          Add
+        </button>
+      </div>
+      {notes.length === 0 ? (
+        <div className="text-sm text-slate-400">No notes yet.</div>
+      ) : (
+        <div className="space-y-2">
+          {notes.map((n) => (
+            <div key={n.id} className="rounded-lg border border-black/10 bg-black/[0.03] p-2.5">
+              <div className="text-sm text-slate-200">{n.body}</div>
+              <div className="mt-1 text-[10px] text-slate-500">{fmtDate(n.createdAt)}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
