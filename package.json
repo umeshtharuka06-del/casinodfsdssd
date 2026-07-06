@@ -11,6 +11,7 @@
     "worker:telegram": "tsx src/workers/telegram-worker.ts",
     "worker:deposit": "tsx src/workers/deposit-scanner.ts",
     "worker:withdraw": "tsx src/workers/withdraw-queue.ts",
+    "worker:analytics": "tsx src/workers/analytics-snapshot.ts",
     "validate:env": "tsx scripts/validate-env.ts",
     "lint": "next lint",
     "db:push": "prisma db push",

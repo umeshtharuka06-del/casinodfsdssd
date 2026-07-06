@@ -35,6 +35,16 @@ model User {
   // until a deposit is APPROVED, at which point it is cleared so the next request
   // rotates to a new random wallet.
   assignedWalletId String?
+  // ── VIP (see VIPHistory, lib/vip.ts) ──
+  // Cached current VIP tier (0 = none). Recomputed automatically on deposit
+  // approval and other qualifying events. When `vipOverride` is non-null an
+  // admin has pinned the tier manually and automatic recomputation is suppressed.
+  vipLevel     Int      @default(0)
+  vipOverride  Int?
+  // Manual (+/-) adjustment an admin applies to this user's qualified-referral
+  // count. Added on top of the computed count wherever it is used (VIP
+  // qualification, dashboards, withdrawal eligibility). Default 0 = no change.
+  referralAdjustment Int @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -269,4 +279,168 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+  // Serves the per-user login history (admin drawer) and the user-list
+  // "last login" lookup (userId + action equality, then createdAt).
+  @@index([userId, action, createdAt])
+}
+
+// ─────────────────────── Advanced business logic ────────────────────────
+//
+// The models below are ADDITIVE — they extend the platform with VIP tiers,
+// casino-accounting, referral qualification and withdrawal-eligibility
+// analytics without altering any existing table. They follow the existing
+// convention (plain indexed `userId` columns, no formal User relation) used by
+// Deposit / Withdrawal / HouseTransaction. Money is coin-cents (1 coin = 100)
+// unless a field is explicitly named `*Usdt`.
+
+// Immutable log of every VIP tier change (automatic or admin override).
+model VIPHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  oldLevel  Int      @default(0)
+  newLevel  Int
+  // AUTO_DEPOSIT | AUTO_REFERRAL | ADMIN_OVERRIDE | ADMIN_CLEAR_OVERRIDE
+  reason    String
+  detail    String?  // JSON snapshot of the qualifying metrics
+  adminId   String?  // set for admin-initiated changes
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// Platform-side (house) revenue/expense ledger. One immutable row per event,
+// signed from the HOUSE perspective: +credit is house revenue, -debit is a
+// house payout/expense. Bet fees and player win/loss are derived from the Bet /
+// HouseTransaction tables directly; this ledger captures the entries that have
+// no other source of truth — VIP bonuses paid and manual admin adjustments —
+// plus optional mirrored entries used by the realtime P/L recalculation.
+model FinancialLedger {
+  id        String   @id @default(cuid())
+  // BET_FEE | WITHDRAW_FEE | PLAYER_LOSS | PLAYER_WIN | REFERRAL_PAYOUT |
+  // VIP_BONUS | MANUAL_ADJUSTMENT
+  type      String
+  amount    Int      // signed coin-cents (house perspective)
+  ref       String?  // related entity id (bet, withdrawal, reward, …)
+  userId    String?  // related user, when applicable
+  note      String?
+  adminId   String?  // set for MANUAL_ADJUSTMENT
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+// House fee charged on every bet stake. NOTE: the authoritative bet-fee ledger
+// is the existing `HouseTransaction` table (kept as the single source of truth
+// to avoid double counting). This model exists per the schema spec as a typed
+// alias/view target; new fee writes continue to go to HouseTransaction and the
+// analytics layer reads from there. Left as a thin table for forward use.
+model BetFee {
+  id        String   @id @default(cuid())
+  betId     String   @unique
+  userId    String
+  game      String
+  fee       Int      // coin-cents
+  feePct    Float    @default(0) // effective fee percentage at charge time
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Fee collected on each processed withdrawal (revenue ledger, mirrors the way
+// HouseTransaction records bet fees). One row per withdrawal.
+model WithdrawFee {
+  id           String   @id @default(cuid())
+  withdrawalId String   @unique
+  userId       String
+  feeUsdt      Float
+  feeCoins     Int      // coin-cents equivalent at the configured rate
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Explicit qualification record for a referred user. A referral only "counts"
+// once the referred user completes at least one APPROVED deposit. Created
+// PENDING at registration (when referredBy is set), moved to QUALIFIED on the
+// first approved deposit, and REJECTED can be set manually by an admin.
+model ReferralQualification {
+  id             String    @id @default(cuid())
+  referrerId     String
+  referredUserId String    @unique
+  // PENDING | QUALIFIED | REJECTED
+  status         String    @default("PENDING")
+  depositId      String?   // the qualifying deposit, when QUALIFIED
+  qualifiedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([referrerId, status])
+}
+
+// Analytics record written whenever a withdrawal request is blocked by an
+// eligibility rule. The user always sees the accurate reason (transparent
+// validation); this table gives the admin a searchable history of blocks.
+model WithdrawalRestriction {
+  id        String   @id @default(cuid())
+  userId    String
+  // DAILY_LIMIT | MIN_AMOUNT | FEE_FLOOR | TURNOVER | REFERRAL_QUALIFICATION
+  reason    String
+  coins     Int      // attempted amount (coin-cents)
+  detail    String?  // JSON with the thresholds/values involved
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// Daily house financial breakdown, one row per UTC day. Written by the snapshot
+// job (lib/analytics.ts) and read by the dashboard trend charts so historical
+// trends don't require scanning the full ledger each load.
+model ProfitSnapshot {
+  id           String   @id @default(cuid())
+  day          DateTime @unique // UTC midnight for the day summarised
+  houseProfit  Int      // coin-cents (the Part 2 formula result)
+  betFees      Int
+  withdrawFees Int
+  playerLosses Int
+  playerWins   Int
+  referralPaid Int
+  vipPaid      Int
+  manualAdj    Int
+  createdAt    DateTime @default(now())
+
+  @@index([day])
+}
+
+// Free-form admin note attached to a user (Part 10). Multiple timestamped notes
+// per user; append-only from the admin panel.
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String
+  adminId   String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Daily player-activity / volume metrics, one row per UTC day. Complements
+// ProfitSnapshot (which is house-side money); this is player-side counts/volume.
+model PlatformAnalytics {
+  id              String   @id @default(cuid())
+  day             DateTime @unique
+  newUsers        Int      @default(0)
+  activeUsers     Int      @default(0)
+  depositCount    Int      @default(0)
+  depositCoins    Int      @default(0)
+  withdrawCount   Int      @default(0)
+  withdrawCoins   Int      @default(0)
+  betCount        Int      @default(0)
+  wagered         Int      @default(0)
+  payout          Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([day])
 }
