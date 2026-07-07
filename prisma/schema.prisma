@@ -433,6 +433,26 @@ model AdminNote {
   @@index([userId, createdAt])
 }
 
+// Admin manual wallet adjustment (add / remove coins). One immutable row per
+// adjustment, capturing the reason and the balance snapshot around it. The
+// actual balance mutation + main ledger row go through the shared applyBalance
+// service (ADMIN_CREDIT / ADMIN_DEBIT Transaction) — this table is the
+// admin-facing audit of who adjusted what and why. Money is coin-cents.
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  adminId       String
+  amount        Int      // magnitude in coin-cents (always positive)
+  type          String   // ADD | REMOVE
+  reason        String
+  balanceBefore Int
+  balanceAfter  Int
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
 // Daily player-activity / volume metrics, one row per UTC day. Complements
 // ProfitSnapshot (which is house-side money); this is player-side counts/volume.
 model PlatformAnalytics {

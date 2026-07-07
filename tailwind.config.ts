@@ -9,13 +9,16 @@ const config: Config = {
         // Blue #798DFE · Dark Blue #2D3987 · Background #FFD966 ·
         // Green #4C6C06 · Red #D81E2C · Purple #8A4DDE · Gold coin #FFD700.
         royal: {
-          blue: "#798DFE",
-          "blue-bright": "#2D3987", // dark blue — readable links/icons/heads
+          blue: "#6C63FF", // primary brand blue
+          "blue-bright": "#4E54C8", // deep indigo — headers / readable accents
           red: "#D81E2C",
           "red-bright": "#B31220",
           yellow: "#4C6C06",
           "yellow-bright": "#3A5305",
         },
+        // Money / UI accents (distinct from the betting green/red/violet).
+        money: { green: "#18C29C", orange: "#FFA31A", danger: "#E53935" },
+        brand: { blue: "#6C63FF", "blue-2": "#5A52F5", deep: "#4E54C8", light: "#EEF2FF" },
         // Game accents used across the prediction UI.
         game: {
           green: "#4C6C06",
@@ -40,18 +43,18 @@ const config: Config = {
           "orange-deep": "#7C3AED",
         },
         cream: {
-          DEFAULT: "#BE3F51",
-          soft: "#C9556A",
-          deep: "#EEF1FF",
+          DEFAULT: "#F7F8FC",
+          soft: "#FFFFFF",
+          deep: "#EEF2FF",
         },
         // Legacy surface ramp — remapped to the light surfaces.
         ink: {
-          950: "#E6E9FF",
-          900: "#BE3F51",
-          800: "#EEF1FF",
+          950: "#EEF2FF",
+          900: "#F7F8FC",
+          800: "#EEF2FF",
           700: "#FFFFFF",
-          600: "#F6F7FF",
-          500: "#E6E9FF",
+          600: "#F7F8FC",
+          500: "#EEF2FF",
         },
         // The app's text hierarchy rides on slate-* classes; remap them to the
         // dark-on-light scale (200 = strongest … 600 = faintest caption).
@@ -66,16 +69,23 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        display: ["var(--font-head)", "var(--font-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-head)", "Outfit", "var(--font-sans)", "system-ui", "sans-serif"],
+        num: ["var(--font-num)", "Space Grotesk", "var(--font-sans)", "monospace"],
+      },
+      borderRadius: {
+        xl: "0.9rem",
+        "2xl": "1.125rem", // 18px — the design-system radius
+        "3xl": "1.5rem",
       },
       boxShadow: {
-        // Very light shadows only — flat layered panels, no floating effects.
-        glow: "0 4px 12px rgba(0,0,0,0.08)",
-        "glow-red": "0 4px 12px rgba(0,0,0,0.08)",
-        "glow-yellow": "0 4px 12px rgba(0,0,0,0.08)",
-        "glow-green": "0 4px 12px rgba(0,0,0,0.08)",
-        card: "0 4px 12px rgba(0,0,0,0.08)",
+        // Soft premium shadows — 0 8px 24px rgba(25,25,25,.08).
+        glow: "0 8px 24px rgba(25,25,25,0.08)",
+        "glow-red": "0 8px 24px rgba(25,25,25,0.08)",
+        "glow-yellow": "0 8px 24px rgba(25,25,25,0.08)",
+        "glow-green": "0 8px 24px rgba(25,25,25,0.08)",
+        card: "0 8px 24px rgba(25,25,25,0.08)",
+        lift: "0 14px 30px rgba(25,25,25,0.12)",
       },
       keyframes: {
         "pulse-glow": {
