@@ -64,6 +64,15 @@ async function record(input: EligibilityInput, reason: RestrictionReason, detail
  * Records a WithdrawalRestriction row on any block.
  */
 export async function checkWithdrawalEligibility(input: EligibilityInput): Promise<EligibilityResult> {
+  // Admin override: this user bypasses ALL withdrawal restrictions (turnover,
+  // referral qualification, minimum betting, limits, lock). Everyone else keeps
+  // the normal restriction system below.
+  const overrideUser = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { manualWithdrawAccess: true },
+  });
+  if (overrideUser?.manualWithdrawAccess) return { ok: true };
+
   const [cfg, crypto] = await Promise.all([getBusinessConfig(), getCryptoConfig()]);
   const { withdrawLimits: limits, withdrawEligibility: elig } = cfg;
 

@@ -303,6 +303,22 @@ export async function notifyWithdrawResolved(p: {
   );
 }
 
+export async function notifyReferralCommission(p: {
+  username: string;
+  uid: string;
+  coins: string;
+}) {
+  await sendTelegram(
+    format("💵 Referral Commission Released", {
+      User: p.username,
+      UID: p.uid,
+      Amount: `${p.coins} coins`,
+      Note: "Your referral commission from betting has been released.",
+      Time: now(),
+    })
+  );
+}
+
 export async function notifyReferralClaim(p: {
   username: string;
   uid: string;

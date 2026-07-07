@@ -38,6 +38,12 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   referral_reward_usdt: "4",
   // Holding period before a referral reward becomes claimable.
   referral_lock_days: "7",
+  // ── Referral revenue share (casino commission) ──
+  // The referrer earns this % of the HOUSE FEE on every settled bet placed by a
+  // user they referred (never from the bet amount, winnings, deposits or
+  // withdrawals). Released to the referral balance after the lock period.
+  referral_revenue_share_pct: "25",
+  referral_commission_lock_days: "7",
   // ── Telegram notifications ──
   // Telegram credentials are NEVER stored in the DB or edited from the admin
   // panel — they come exclusively from the server environment (see src/lib/

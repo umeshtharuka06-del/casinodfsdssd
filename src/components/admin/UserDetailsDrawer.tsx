@@ -11,6 +11,8 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   ArrowPathIcon,
+  ShieldCheckIcon,
+  LockOpenIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Types mirror the /api/admin/users/[id] payload (src/lib/admin-user.ts) ──
@@ -26,6 +28,7 @@ interface Details {
     email: string;
     isAdmin: boolean;
     isBanned: boolean;
+    manualWithdrawAccess: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -240,6 +243,16 @@ export function UserDetailsDrawer({
             <WalletManagement
               userId={data.profile.id}
               balanceFmt={data.wallet.balanceFmt}
+              onDone={async () => {
+                await reload();
+                onChanged?.();
+              }}
+            />
+
+            {/* Withdrawal access — admin override of all withdrawal restrictions */}
+            <WithdrawalAccess
+              userId={data.profile.id}
+              enabled={data.profile.manualWithdrawAccess}
               onDone={async () => {
                 await reload();
                 onChanged?.();
@@ -874,6 +887,113 @@ function WalletManagement({
       </button>
 
       {/* Toast (inline, auto-dismissing) */}
+      {toast && (
+        <div
+          className={`mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${
+            toast.ok
+              ? "border-game-green/40 bg-game-green/10 text-game-green"
+              : "border-game-red/40 bg-game-red/10 text-game-red-bright"
+          }`}
+        >
+          {toast.ok ? (
+            <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span>{toast.text}</span>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * Withdrawal access card — admin override that lets a single user withdraw
+ * immediately, bypassing every restriction (turnover, referral qualification,
+ * minimum betting, limits, lock). All other users keep the normal system.
+ */
+function WithdrawalAccess({
+  userId,
+  enabled,
+  onDone,
+}: {
+  userId: string;
+  enabled: boolean;
+  onDone: () => void | Promise<void>;
+}) {
+  const [on, setOn] = useState(enabled);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => setOn(enabled), [enabled]);
+
+  async function toggle() {
+    const next = !on;
+    setBusy(true);
+    setToast(null);
+    const res = await api(`/api/admin/users/${userId}`, {
+      json: { action: "withdrawAccess", enabled: next },
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setToast({ ok: false, text: res.error || "Update failed." });
+      return;
+    }
+    setOn(next);
+    setToast({
+      ok: true,
+      text: next
+        ? "Manual withdrawal access enabled — this user can withdraw immediately."
+        : "Manual withdrawal access disabled — normal restrictions apply.",
+    });
+    await onDone();
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  return (
+    <Section title="Withdrawal access">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase text-slate-500">Current status</span>
+        {on ? (
+          <span className="chip flex items-center gap-1 bg-game-green/15 text-game-green">
+            <LockOpenIcon className="h-3.5 w-3.5" /> Manual Access Enabled
+          </span>
+        ) : (
+          <span className="chip flex items-center gap-1 bg-black/5 text-slate-500">
+            <ShieldCheckIcon className="h-3.5 w-3.5" /> Automatic Restrictions
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-start justify-between gap-3 rounded-xl border border-black/10 bg-black/[0.03] p-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-[#111111]">Enable Manual Withdrawal Access</div>
+          <div className="mt-0.5 text-xs leading-relaxed text-slate-500">
+            When enabled this user can withdraw immediately without meeting turnover,
+            referral or minimum betting requirements.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={busy}
+          role="switch"
+          aria-checked={on}
+          className={`relative mt-0.5 grid h-7 w-12 shrink-0 place-items-center rounded-full transition ${
+            on ? "bg-game-green" : "bg-slate-300"
+          } ${busy ? "opacity-60" : ""}`}
+        >
+          {busy ? (
+            <ArrowPathIcon className="h-4 w-4 animate-spin text-white" />
+          ) : (
+            <span
+              className={`absolute h-5 w-5 rounded-full bg-white shadow transition-all ${
+                on ? "left-6" : "left-1"
+              }`}
+            />
+          )}
+        </button>
+      </div>
+
       {toast && (
         <div
           className={`mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${

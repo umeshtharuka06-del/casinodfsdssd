@@ -20,6 +20,10 @@ const FIELDS: { key: string; label: string; hint: string }[] = [
   // ── Referral qualification (Part 4) ──
   { key: "referral_qualification_enabled", label: "Referral qualification", hint: "true / false — only approved-deposit referrals count" },
 
+  // ── Referral revenue share (casino commission) ──
+  { key: "referral_revenue_share_pct", label: "Referral revenue share (%)", hint: "% of house fee earned per referred bet (default 25)" },
+  { key: "referral_commission_lock_days", label: "Commission lock (days)", hint: "Days before a commission unlocks (default 7)" },
+
   // ── VIP tiers (Part 5) ──
   { key: "vip_enabled", label: "VIP system enabled", hint: "true / false" },
   { key: "vip1_min_deposit_usdt", label: "VIP1 min deposit (USDT)", hint: "Deposit threshold for VIP1" },

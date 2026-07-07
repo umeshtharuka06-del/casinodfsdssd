@@ -184,6 +184,7 @@ export async function getAdminUserDetails(userId: string) {
       email: user.email,
       isAdmin: user.isAdmin,
       isBanned: user.isBanned,
+      manualWithdrawAccess: user.manualWithdrawAccess,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
