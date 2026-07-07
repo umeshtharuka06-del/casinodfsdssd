@@ -18,8 +18,10 @@ export async function GET() {
 
   return ok({
     network: wallet?.network ?? "TRC20",
+    // NOTE: the internal wallet `name`/label is deliberately NOT included here.
+    // It is admin-only (Admin → Deposit Wallets) and must never reach end users.
     wallet: wallet
-      ? { id: wallet.id, name: wallet.name, address: wallet.address, network: wallet.network }
+      ? { id: wallet.id, address: wallet.address, network: wallet.network }
       : null,
     minDepositUsdt: cfg.minDepositUsdt,
     minWithdrawCoins: cfg.minWithdrawCoins,

@@ -14,7 +14,6 @@ import { coins } from "@/lib/fmt";
 
 interface Wallet {
   id: string;
-  name: string;
   address: string;
   network: string;
 }
@@ -166,12 +165,10 @@ export default function DepositPage() {
         </div>
       ) : (
         <>
-          {/* Assigned wallet + QR */}
+          {/* Assigned wallet + QR — internal wallet label is intentionally NOT
+              shown to users; only QR, address, network and copy are exposed. */}
           <div className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="chip bg-royal-blue/15 text-royal-blue-bright">
-                {cfg.wallet.name}
-              </span>
+            <div className="mb-3 flex items-center justify-end">
               <span className="chip bg-mega-gold/15 text-game-gold">
                 Network · USDT {cfg.wallet.network}
               </span>

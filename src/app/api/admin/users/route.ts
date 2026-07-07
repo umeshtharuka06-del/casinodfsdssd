@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { applyBalance, COIN, fmtCoins } from "@/lib/wallet";
 import { computeUserMetrics } from "@/lib/admin-user-list";
+import { notifyUserBanned, notifyBalanceAdjust } from "@/lib/telegram";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
@@ -190,6 +191,21 @@ export async function POST(req: NextRequest) {
         break;
     }
     await audit(`admin.user.${action}`, { userId: admin.id, detail: { target: userId, amount } });
+
+    // Operator notifications for ban/unban and manual balance changes.
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+    const tname = target?.username ?? "—";
+    if (action === "ban" || action === "unban") {
+      await notifyUserBanned({ username: tname, uid: userId, banned: action === "ban", admin: admin.username });
+    } else if ((action === "credit" || action === "debit") && amount) {
+      await notifyBalanceAdjust({
+        username: tname,
+        uid: userId,
+        direction: action,
+        coins: fmtCoins(amount * COIN),
+        admin: admin.username,
+      });
+    }
     return ok({ done: true });
   } catch (e) {
     return handleError(e);

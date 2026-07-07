@@ -57,7 +57,13 @@ export async function POST(req: NextRequest) {
   // Track the referral as PENDING (it only counts once the user makes an
   // approved deposit — see markReferralQualified). Best-effort, never blocks signup.
   if (referredBy) await ensureQualificationPending(user.id, referredBy).catch(() => {});
-  await notifyNewUser({ username: user.username, uid: user.id });
+  await notifyNewUser({
+    username: user.username,
+    uid: user.id,
+    email: user.email,
+    referredBy,
+    ip,
+  });
   await createSessionCookie({
     sub: user.id,
     email: user.email,
