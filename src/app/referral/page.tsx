@@ -103,7 +103,7 @@ export default function ReferralPage() {
 
   return (
     <div className="space-y-4 py-2">
-      <h1 className="flex items-center gap-2 px-1 text-lg font-bold text-white">
+      <h1 className="flex items-center gap-2 px-1 text-lg font-black text-[#1D1D1F]">
         <ReferralIcon className="h-5 w-5 text-royal-blue-bright" /> Promotion
       </h1>
 

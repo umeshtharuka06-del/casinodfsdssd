@@ -70,27 +70,30 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Wallet */}
+      {/* Wallet — white card with a gradient top strip */}
       <div className="card overflow-hidden">
-        <div className="panel-head rounded-t-2xl">
+        <div
+          className="flex items-center justify-between rounded-t-[18px] px-4 py-3 text-sm font-bold text-white"
+          style={{ background: "linear-gradient(135deg, #6C63FF 0%, #7A6BFF 100%)" }}
+        >
           <span>My Wallet</span>
           <Link href="/transactions" className="text-xs font-semibold text-white/90">
             History →
           </Link>
         </div>
-        <div className="p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#777777]">
+        <div className="p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#666666]">
             Wallet balance
           </div>
-          <div className="mt-1 flex items-center gap-2 font-display text-3xl font-bold tabular-nums text-[#111111]">
+          <div className="mt-1 flex items-center gap-2 font-num text-3xl font-bold tabular-nums text-[#1D1D1F]">
             <CoinIcon size={26} />
             {me ? coins(me.balanceFmt) : "0"}
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Link href="/deposit" className="btn-green">
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Link href="/deposit" className="btn-deposit">
               <RechargeIcon className="h-4 w-4" /> Deposit
             </Link>
-            <Link href="/withdraw" className="btn-blue">
+            <Link href="/withdraw" className="btn-withdraw">
               <WithdrawIcon className="h-4 w-4" /> Withdraw
             </Link>
           </div>
@@ -102,7 +105,7 @@ export default function HomePage() {
 
       {/* Game cards */}
       <section>
-        <h2 className="mb-2.5 px-1 text-base font-bold text-white">Games</h2>
+        <h2 className="mb-2.5 px-1 text-base font-black text-[#1D1D1F]">Games</h2>
         <div className="grid grid-cols-2 gap-3">
           {MODES.map((m) => {
             const Icon = MODE_ICON[m.key];

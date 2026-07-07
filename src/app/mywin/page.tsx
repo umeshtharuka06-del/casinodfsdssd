@@ -54,8 +54,8 @@ export default function MyWinPage() {
     return (
       <div className="space-y-4 py-10 text-center">
         <TrophyIcon className="mx-auto h-10 w-10 text-game-gold" />
-        <div className="text-lg font-bold text-white">Track your wins</div>
-        <p className="text-sm text-white/80">Log in to see your bet history.</p>
+        <div className="text-lg font-black text-[#1D1D1F]">Track your wins</div>
+        <p className="text-sm text-slate-400">Log in to see your bet history.</p>
         <Link href="/login?next=/mywin" className="btn-blue mx-auto w-40">
           Log in
         </Link>
@@ -65,7 +65,7 @@ export default function MyWinPage() {
 
   return (
     <div className="space-y-4 py-2">
-      <h1 className="px-1 text-lg font-bold text-white">My Bets</h1>
+      <h1 className="px-1 text-lg font-black text-[#1D1D1F]">My Bets</h1>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3">

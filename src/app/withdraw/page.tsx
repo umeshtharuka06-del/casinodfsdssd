@@ -97,10 +97,10 @@ export default function WithdrawPage() {
   return (
     <div className="space-y-4 py-2">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-lg font-bold text-white">
-          <WithdrawIcon className="h-5 w-5 text-white" /> Withdraw USDT
+        <h1 className="flex items-center gap-2 text-lg font-black text-[#1D1D1F]">
+          <WithdrawIcon className="h-5 w-5 text-royal-blue-bright" /> Withdraw USDT
         </h1>
-        <Link href="/mine" className="text-xs font-semibold text-white/85">
+        <Link href="/mine" className="text-xs font-semibold text-royal-blue-bright">
           ← Back
         </Link>
       </div>

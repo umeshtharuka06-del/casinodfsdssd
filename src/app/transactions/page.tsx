@@ -188,8 +188,8 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-4 py-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">Transactions</h1>
-        <Link href="/mine" className="text-xs font-semibold text-white/85">
+        <h1 className="text-lg font-black text-[#1D1D1F]">Transactions</h1>
+        <Link href="/mine" className="text-xs font-semibold text-royal-blue-bright">
           ← Back
         </Link>
       </div>

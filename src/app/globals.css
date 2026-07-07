@@ -11,40 +11,60 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-head: var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  /* Typography system — Inter (body/UI), Outfit (display/headings),
+     Space Grotesk (numbers). Outfit + Space Grotesk load via a stylesheet
+     link in layout.tsx; Inter/Oxanium are the self-hosted fallbacks. */
+  --font-sans: var(--font-body), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Outfit", var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-num: "Space Grotesk", var(--font-body), ui-monospace, "SFMono-Regular", monospace;
 
-  /* ── Design tokens ── */
-  --page: #be3f51;          /* dusty-red page background (dominant) */
-  --page-top: #c9556a;      /* subtle gradient top */
+  /* ── Design tokens (modern premium casino, light theme) ── */
+  --page: #f7f8fc;          /* app background */
+  --page-top: #f7f8fc;
   --surface: #ffffff;       /* card */
-  --surface-2: #f6f7ff;     /* raised card / hover (very light blue-white) */
-  --surface-3: #eef1ff;     /* inset wells inside cards / inputs */
-  --line: rgba(45, 57, 135, 0.18);
-  --line-soft: rgba(45, 57, 135, 0.12);
-  --line-strong: rgba(45, 57, 135, 0.35);
+  --surface-2: #ffffff;     /* raised card / hover */
+  --surface-3: #eef2ff;     /* inset wells / inputs (light blue) */
+  --light-blue: #eef2ff;
+  --line: #e9ecf3;          /* border */
+  --line-soft: #eef1f6;
+  --line-strong: #d8dde9;
 
-  --blue: #798dfe;          /* secondary blue — cards, tables, tabs, badges */
-  --blue-deep: #2d3987;     /* primary header/footer/table-head/icon blue */
-  --green: #4c6c06;         /* olive green — positive / money actions */
+  /* Brand blues */
+  --blue: #6c63ff;          /* primary */
+  --blue-2: #5a52f5;        /* secondary */
+  --blue-deep: #4e54c8;     /* header / footer / table heads */
+
+  /* ── Betting colours — DO NOT CHANGE (green / red / violet bets) ── */
+  --green: #4c6c06;
   --green-deep: #3a5305;
-  --red: #d81e2c;           /* primary red — danger / red bets */
+  --red: #d81e2c;
   --red-deep: #b31220;
-  --purple: #8b5cf6;        /* real violet (WinGo-style) — was pink */
+  --purple: #8b5cf6;
   --purple-deep: #7c3aed;
-  --violet: var(--purple);  /* legacy alias — violet selections use violet */
+  --violet: var(--purple);
   --violet-deep: var(--purple-deep);
+
+  /* Money / UI accents (distinct from betting colours) */
+  --money-green: #18c29c;   /* deposit / success */
+  --orange: #ffa31a;        /* withdraw */
+  --danger: #e53935;
+
   --gold: #f6b738;          /* gold coin */
   --gold-soft: #ffe08a;
   --gold-deep: #d98a14;
 
-  --text: #111111;
+  --text: #1d1d1f;
   --text-2: #444444;
   --text-3: #666666;
-  --text-4: #777777;
+  --text-4: #8a8f9c;
+
+  --radius: 18px;
+  --radius-sm: 14px;
+  --shadow: 0 8px 24px rgba(25, 25, 25, 0.08);
+  --shadow-lift: 0 14px 30px rgba(25, 25, 25, 0.12);
 
   /* Content column — fluid, capped for readability. NOT a phone frame. */
-  --content: 42rem;
+  --content: 44rem;
 }
 
 * {
@@ -57,8 +77,7 @@ html {
 
 body {
   color: var(--text);
-  background: linear-gradient(180deg, var(--page-top) 0%, var(--page) 100%);
-  background-attachment: fixed;
+  background: var(--page);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -69,85 +88,106 @@ h1, h2, h3, .font-display {
   letter-spacing: -0.01em;
 }
 
+/* Numeric displays (balances, amounts, countdowns) use Space Grotesk. */
+.tabular-nums,
+.font-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
 @layer components {
-  /* Flat white panel (.glass kept as a legacy alias — no blur, no glass). */
+  /* Premium white card — soft shadow, generous radius, subtle hover lift. */
   .card,
   .glass {
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--surface);
-    border: 1px solid var(--line-soft);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
   }
   .card-raised {
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--surface-2);
-    border: 1px solid var(--line-soft);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
   }
+  /* Interactive cards lift gently on hover and press in on tap. */
   .glass-hover {
-    @apply transition;
+    @apply transition-all duration-200;
   }
   .glass-hover:hover {
-    background: var(--surface-2);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
   }
   .glass-hover:active {
-    background: var(--surface-3);
+    transform: translateY(0) scale(0.995);
   }
   /* Inset well inside a card (address boxes, summaries, rows). */
   .well {
-    @apply rounded-xl;
-    background: var(--surface-3);
+    @apply rounded-2xl;
+    background: var(--light-blue);
   }
 
-  /* Blue section header bar — tops of panels / table heads. */
+  /* Primary section header bar — tops of panels / table heads. */
   .panel-head {
-    @apply flex items-center justify-between px-4 py-2.5 text-sm font-bold text-white;
+    @apply flex items-center justify-between px-4 py-3 text-sm font-bold text-white;
     background: var(--blue);
   }
 
-  /* Betting-table header & rows (blue lottery style). */
+  /* Table header (blue) + white rows with a hairline divider. */
   .tbl-head {
     background: var(--blue-deep);
     color: #ffffff;
   }
   .tbl-row {
-    background: var(--blue);
+    background: #ffffff;
     color: var(--text);
+    border-bottom: 1px solid #ececec;
   }
 
-  /* Buttons — rounded, SOLID colours, hover + pressed animations. */
+  /* Buttons — rounded, Inter SemiBold, hover + pressed micro-animations. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3
-      text-sm font-bold text-white transition duration-150
-      active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3
+      text-sm font-semibold text-white transition-all duration-200
+      active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45
       disabled:saturate-50 disabled:active:scale-100;
-    box-shadow: 0 2px 6px rgba(45, 57, 135, 0.18);
+    box-shadow: 0 6px 16px rgba(108, 99, 255, 0.16);
   }
-  .btn:not(:disabled):hover { filter: brightness(0.94); }
+  .btn:not(:disabled):hover { filter: brightness(1.04); transform: translateY(-1px); }
+  /* Primary blue → gradient (BC.Game / Stake style). */
   .btn-blue {
     @apply btn;
-    background: var(--blue);
+    background: linear-gradient(135deg, var(--blue) 0%, #7a6bff 100%);
   }
+  /* ── Betting buttons — colours preserved exactly ── */
   .btn-green {
     @apply btn;
     background: var(--green);
+    box-shadow: 0 6px 16px rgba(76, 108, 6, 0.2);
   }
   .btn-red {
     @apply btn;
     background: var(--red);
+    box-shadow: 0 6px 16px rgba(216, 30, 44, 0.2);
   }
   .btn-violet,
   .btn-purple {
     @apply btn;
     background: var(--purple);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.2);
   }
-  /* Primary CTA — money / confirm actions are green. `.btn-gold`,
-     `.btn-yellow` and `.btn-orange` are legacy aliases. */
-  .btn-orange,
+  /* Money actions — deposit = teal-green, withdraw = orange. */
+  .btn-deposit,
   .btn-gold,
   .btn-yellow {
     @apply btn;
-    background: var(--green);
+    background: var(--money-green);
+    box-shadow: 0 6px 16px rgba(24, 194, 156, 0.22);
+  }
+  .btn-withdraw,
+  .btn-orange {
+    @apply btn;
+    background: var(--orange);
+    box-shadow: 0 6px 16px rgba(255, 163, 26, 0.22);
   }
   .btn-ghost {
     @apply btn;
@@ -156,16 +196,21 @@ h1, h2, h3, .font-display {
     border: 1px solid var(--line);
     box-shadow: none;
   }
-  .btn-ghost:not(:disabled):hover { filter: none; background: var(--surface-3); }
+  .btn-ghost:not(:disabled):hover { filter: none; background: var(--light-blue); transform: none; }
 
+  /* Modern inputs — rounded, light borders, smooth focus glow. */
   .input {
-    @apply w-full rounded-xl px-4 py-3 text-sm outline-none transition;
+    @apply w-full rounded-2xl px-4 py-3 text-sm outline-none transition-all duration-200;
     color: var(--text);
-    background: var(--surface-3);
+    background: var(--surface);
     border: 1px solid var(--line);
   }
-  .input::placeholder { color: #8a8a8a; }
-  .input:focus { border-color: var(--blue); background: #ffffff; }
+  .input::placeholder { color: #9aa0ad; }
+  .input:focus {
+    border-color: var(--blue);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.16);
+  }
 
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
@@ -174,11 +219,11 @@ h1, h2, h3, .font-display {
   /* Pill tab group (Parity / Sapre / Bcone / Emerd …). */
   .pill-tabs {
     @apply flex items-center gap-1 rounded-full p-1;
-    background: var(--surface-3);
+    background: var(--light-blue);
     border: 1px solid var(--line);
   }
   .pill-tab {
-    @apply flex-1 rounded-full px-3 py-2 text-center text-sm font-semibold transition;
+    @apply flex-1 rounded-full px-3 py-2 text-center text-sm font-semibold transition-all duration-200;
     color: var(--text-3);
   }
   .pill-tab-active {
@@ -186,9 +231,9 @@ h1, h2, h3, .font-display {
     background: var(--blue);
   }
 
-  /* Brand accent for the wordmark — dark-blue → purple, on light surfaces. */
+  /* Brand accent for the wordmark — primary blue gradient. */
   .brand-gradient {
-    background: linear-gradient(100deg, var(--blue-deep) 0%, var(--purple) 100%);
+    background: linear-gradient(100deg, var(--blue-deep) 0%, var(--blue) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -210,8 +255,8 @@ h1, h2, h3, .font-display {
   .skeleton {
     position: relative;
     overflow: hidden;
-    background: rgba(45, 57, 135, 0.1);
-    border-radius: 0.75rem;
+    background: #eef1f6;
+    border-radius: 0.9rem;
   }
   .skeleton::after {
     content: "";
@@ -245,9 +290,9 @@ h1, h2, h3, .font-display {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: rgba(45, 57, 135, 0.25);
+  background: rgba(108, 99, 255, 0.28);
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(45, 57, 135, 0.4); }
+::-webkit-scrollbar-thumb:hover { background: rgba(108, 99, 255, 0.45); }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

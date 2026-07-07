@@ -60,7 +60,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4 py-2">
-      <h1 className="text-lg font-bold text-white">Round history</h1>
+      <h1 className="text-lg font-black text-[#1D1D1F]">Round history</h1>
 
       {/* Tabs */}
       <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">

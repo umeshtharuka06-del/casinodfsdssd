@@ -66,10 +66,10 @@ export default function MinePage() {
         </div>
         {/* Identical styling to the Home-page wallet buttons */}
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <Link href="/deposit" className="btn-green">
+          <Link href="/deposit" className="btn-deposit">
             <RechargeIcon className="h-4 w-4" /> Deposit
           </Link>
-          <Link href="/withdraw" className="btn-blue">
+          <Link href="/withdraw" className="btn-withdraw">
             <WithdrawIcon className="h-4 w-4" /> Withdraw
           </Link>
         </div>
@@ -113,7 +113,7 @@ export default function MinePage() {
       {/* Settings */}
       <ChangePassword />
 
-      <div className="px-1 text-center text-[11px] text-white/70">
+      <div className="px-1 text-center text-[11px] text-slate-500">
         Member since {new Date(me.createdAt).toLocaleDateString()}
       </div>
 

@@ -77,7 +77,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2D3987",
+  themeColor: "#4E54C8",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -86,6 +86,17 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
+      <head>
+        {/* Display + numeric fonts (Outfit, Space Grotesk). Loaded at runtime via
+            the Google Fonts CDN so the offline/Docker build never depends on a
+            build-time font fetch. Inter/Oxanium remain self-hosted fallbacks. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <UserProvider>
           <TopBar />

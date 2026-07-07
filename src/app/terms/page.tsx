@@ -11,10 +11,10 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 py-4">
       <div className="flex items-center justify-between px-1">
-        <h1 className="text-xl font-black text-white md:text-2xl">
+        <h1 className="text-xl font-black text-[#1D1D1F] md:text-2xl">
           Terms &amp; Conditions
         </h1>
-        <Link href="/register" className="text-xs font-semibold text-white/85">
+        <Link href="/register" className="text-xs font-semibold text-royal-blue-bright">
           ← Back
         </Link>
       </div>
