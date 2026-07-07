@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/client";
 import { CoinIcon } from "@/components/CoinIcon";
 import { VipBadge } from "@/components/VipBadge";
+import {
+  WalletIcon,
+  PlusCircleIcon,
+  MinusCircleIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 // ── Types mirror the /api/admin/users/[id] payload (src/lib/admin-user.ts) ──
 interface TreeNode {
@@ -227,6 +235,16 @@ export function UserDetailsDrawer({
                 <span className="text-xs font-medium text-slate-400">coins</span>
               </div>
             </Section>
+
+            {/* Wallet management — manual add / remove coins */}
+            <WalletManagement
+              userId={data.profile.id}
+              balanceFmt={data.wallet.balanceFmt}
+              onDone={async () => {
+                await reload();
+                onChanged?.();
+              }}
+            />
 
             {/* VIP status + manual controls */}
             <Section title="VIP status & controls">
@@ -705,5 +723,173 @@ function TreeBranch({
         </div>
       )}
     </div>
+  );
+}
+
+// Reason presets shown as quick-fill chips above the reason textarea.
+const REASON_PRESETS = [
+  "Promotion",
+  "Manual Bonus",
+  "Compensation",
+  "Refund",
+  "Penalty",
+  "Correction",
+  "Admin Note",
+];
+
+/**
+ * Wallet management card — admins add or remove coins from a user's wallet.
+ * Posts to POST /api/admin/users/:id/wallet, then calls `onDone` to refresh the
+ * drawer (wallet balance + histories) and the parent user table without a page
+ * reload. Shows a spinner while applying and a success/error toast.
+ */
+function WalletManagement({
+  userId,
+  balanceFmt,
+  onDone,
+}: {
+  userId: string;
+  balanceFmt: string;
+  onDone: () => void | Promise<void>;
+}) {
+  const [action, setAction] = useState<"ADD" | "REMOVE">("ADD");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const isAdd = action === "ADD";
+  const amountNum = Number(amount);
+  const validAmount = Number.isInteger(amountNum) && amountNum > 0;
+
+  async function apply() {
+    setToast(null);
+    if (!validAmount) return setToast({ ok: false, text: "Enter a positive whole number of coins." });
+    if (!reason.trim()) return setToast({ ok: false, text: "A reason is required." });
+    setBusy(true);
+    const res = await api<{ balanceFmt: string; amountFmt: string; type: string }>(
+      `/api/admin/users/${userId}/wallet`,
+      { json: { amount: amountNum, action, reason: reason.trim() } }
+    );
+    setBusy(false);
+    if (!res.ok) {
+      setToast({ ok: false, text: res.error || "Adjustment failed." });
+      return;
+    }
+    setToast({
+      ok: true,
+      text: `${isAdd ? "Added" : "Removed"} ${res.data?.amountFmt ?? amount} coins. New balance: ${res.data?.balanceFmt}.`,
+    });
+    setAmount("");
+    setReason("");
+    await onDone();
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  return (
+    <Section title="Wallet management">
+      {/* Current balance */}
+      <div className="mb-3 flex items-center justify-between rounded-xl border border-black/10 bg-black/[0.03] px-3 py-2.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500">
+          <WalletIcon className="h-4 w-4" /> Current balance
+        </span>
+        <span className="flex items-center gap-1.5 text-base font-black text-game-gold">
+          <CoinIcon /> {balanceFmt}
+        </span>
+      </div>
+
+      {/* Action selector */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setAction("ADD")}
+          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition ${
+            isAdd ? "bg-game-green text-white shadow-sm" : "bg-black/5 text-slate-500 hover:text-[#111111]"
+          }`}
+        >
+          <PlusCircleIcon className="h-5 w-5" /> Add Coins
+        </button>
+        <button
+          type="button"
+          onClick={() => setAction("REMOVE")}
+          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition ${
+            !isAdd ? "bg-game-red text-white shadow-sm" : "bg-black/5 text-slate-500 hover:text-[#111111]"
+          }`}
+        >
+          <MinusCircleIcon className="h-5 w-5" /> Remove Coins
+        </button>
+      </div>
+
+      {/* Amount */}
+      <label className="mb-1 block text-[10px] uppercase text-slate-500">Amount (coins)</label>
+      <input
+        type="number"
+        min={1}
+        step={1}
+        inputMode="numeric"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="e.g. 500"
+        className="input mb-3"
+      />
+
+      {/* Reason */}
+      <label className="mb-1 block text-[10px] uppercase text-slate-500">Reason</label>
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {REASON_PRESETS.map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => setReason(r)}
+            className={`chip ${reason === r ? "bg-royal-blue/15 text-royal-blue-bright" : "bg-black/5 text-slate-500"}`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={2}
+        placeholder="Reason for this adjustment (required)…"
+        className="input resize-none"
+      />
+
+      {/* Apply */}
+      <button
+        onClick={apply}
+        disabled={busy || !validAmount || !reason.trim()}
+        className={`mt-3 w-full ${isAdd ? "btn-green" : "btn-red"}`}
+      >
+        {busy ? (
+          <>
+            <ArrowPathIcon className="h-4 w-4 animate-spin" /> Applying…
+          </>
+        ) : (
+          <>
+            {isAdd ? <PlusCircleIcon className="h-4 w-4" /> : <MinusCircleIcon className="h-4 w-4" />}
+            {isAdd ? "Add coins" : "Remove coins"}
+          </>
+        )}
+      </button>
+
+      {/* Toast (inline, auto-dismissing) */}
+      {toast && (
+        <div
+          className={`mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${
+            toast.ok
+              ? "border-game-green/40 bg-game-green/10 text-game-green"
+              : "border-game-red/40 bg-game-red/10 text-game-red-bright"
+          }`}
+        >
+          {toast.ok ? (
+            <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span>{toast.text}</span>
+        </div>
+      )}
+    </Section>
   );
 }

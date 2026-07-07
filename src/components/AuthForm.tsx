@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { api } from "@/lib/client";
-import { Logo } from "./Logo";
+import { Wordmark } from "./Wordmark";
 import { EyeIcon, EyeOffIcon } from "./icons";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -64,7 +64,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   return (
     <div className="mx-auto max-w-md py-10">
       <div className="mb-6 flex justify-center">
-        <Logo />
+        {/* Logo image only — no wordmark text above the card. */}
+        <Wordmark className="h-12" />
       </div>
       <div className="card p-6 md:p-8">
         <h1 className="text-2xl font-bold">

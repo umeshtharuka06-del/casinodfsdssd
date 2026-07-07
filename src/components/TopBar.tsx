@@ -15,7 +15,7 @@ export function TopBar() {
   if (HIDE_ON.some((p) => pathname.startsWith(p))) return null;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#2D3987] shadow-[0_1px_2px_rgba(17,17,17,0.1)]">
+    <header className="sticky top-0 z-40 bg-[#4E54C8] shadow-[0_2px_10px_rgba(78,84,200,0.25)]">
       <div className="content-col">
         {/* Fixed row height keeps the header height constant even as the logo
             grows; items-center vertically centres the logo and balance widget. */}
@@ -38,7 +38,7 @@ export function TopBar() {
               </div>
               <Link
                 href="/deposit"
-                className="grid h-8 w-8 place-items-center rounded-lg bg-[#4C6C06] text-white transition hover:brightness-95 active:scale-95"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-[#18C29C] text-white transition hover:brightness-105 active:scale-95"
                 aria-label="Deposit"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ height: 18, width: 18 }}>
