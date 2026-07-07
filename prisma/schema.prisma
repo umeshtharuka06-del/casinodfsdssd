@@ -45,6 +45,10 @@ model User {
   // count. Added on top of the computed count wherever it is used (VIP
   // qualification, dashboards, withdrawal eligibility). Default 0 = no change.
   referralAdjustment Int @default(0)
+  // Admin withdrawal-access override. When true, ALL withdrawal restrictions
+  // (turnover, referral qualification, minimum betting, limits) are bypassed for
+  // THIS user only — everyone else keeps the normal restriction system.
+  manualWithdrawAccess Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -163,6 +167,33 @@ model ReferralReward {
 
   @@index([referrerId, status])
   @@index([referrerId, createdAt])
+}
+
+// Casino revenue-share commission: the referrer earns a configurable % (default
+// 25) of the HOUSE FEE on every SETTLED bet placed by a user they referred.
+// Never computed from the bet amount, winnings, deposits or withdrawals — only
+// from the house fee. One row per bet (unique betId). Created PENDING by the
+// hourly referral-commission job scanning settled bets; released to AVAILABLE
+// after `referral_commission_lock_days` (7) days; CLAIMED alongside the welcome
+// bonus via the SAME referral balance (no separate referral wallet).
+model ReferralCommission {
+  id               String    @id @default(cuid())
+  ownerUserId      String    // the referrer who earns the commission
+  referredUserId   String    // the bettor
+  betId            String    @unique // one commission per bet (dedup)
+  houseFee         Int       // coin-cents of house fee on the bet
+  commissionPercent Float    // % applied at creation time
+  commissionAmount Int       // coin-cents earned (houseFee * percent / 100)
+  // PENDING (locked) | AVAILABLE (released, claimable) | CLAIMED
+  status           String    @default("PENDING")
+  createdAt        DateTime  @default(now())
+  availableAt      DateTime  // when it moves PENDING -> AVAILABLE (createdAt + lock)
+  releasedAt       DateTime?
+  claimedAt        DateTime?
+
+  @@index([ownerUserId, status])
+  @@index([ownerUserId, createdAt])
+  @@index([status, availableAt])
 }
 
 // ───────────────────────────── Platform ─────────────────────────────────
