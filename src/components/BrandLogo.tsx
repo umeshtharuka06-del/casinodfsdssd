@@ -1,10 +1,10 @@
 import Image from "next/image";
 
 /**
- * Mega 99 brand mark — renders the OFFICIAL supplied logo asset, background
- * removed (public/brand/mega99-logo-transparent.png) so it blends naturally onto
- * any surface with no square box behind it. The logo itself is never recreated
- * or restyled; we only size it, preserving its 1:1 aspect ratio (no stretch/crop).
+ * Mega 99 brand mark — renders the single canonical logo asset at
+ * `public/images/mega99-logo.png` (served at `/images/mega99-logo.png`). One
+ * file is used everywhere; the logo is never recreated or restyled, only sized,
+ * preserving its aspect ratio (objectFit contain — no stretch/crop).
  */
 export function BrandLogo({
   size = 36,
@@ -17,7 +17,7 @@ export function BrandLogo({
 }) {
   return (
     <Image
-      src="/brand/mega99-logo-transparent.png"
+      src="/images/mega99-logo.png"
       alt="Mega 99"
       width={size}
       height={size}

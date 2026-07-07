@@ -147,11 +147,20 @@ function format(title: string, fields: Record<string, string | number | undefine
 
 // ── Event notifiers (each guarded; safe to call without await-handling) ──────
 
-export async function notifyNewUser(p: { username: string; uid: string }) {
+export async function notifyNewUser(p: {
+  username: string;
+  uid: string;
+  email?: string;
+  referredBy?: string | null;
+  ip?: string | null;
+}) {
   await sendTelegram(
     format("🆕 New User Registration", {
       User: p.username,
       UID: p.uid,
+      Email: p.email,
+      Referral: p.referredBy || "Organic (none)",
+      IP: p.ip || undefined,
       Time: now(),
     })
   );
@@ -316,6 +325,59 @@ export async function notifyAdminLogin(p: { username: string; uid: string; ip?: 
       User: p.username,
       UID: p.uid,
       IP: p.ip,
+      Time: now(),
+    })
+  );
+}
+
+export async function notifyUserBanned(p: {
+  username: string;
+  uid: string;
+  banned: boolean;
+  admin: string;
+}) {
+  await sendTelegram(
+    format(p.banned ? "🚫 User Banned" : "♻️ User Unbanned", {
+      User: p.username,
+      UID: p.uid,
+      Action: p.banned ? "Banned" : "Unbanned",
+      Admin: p.admin,
+      Time: now(),
+    })
+  );
+}
+
+export async function notifyVipChanged(p: {
+  username: string;
+  uid: string;
+  oldLevel: number;
+  newLevel: number;
+  admin?: string;
+}) {
+  await sendTelegram(
+    format("💎 VIP Level Changed", {
+      User: p.username,
+      UID: p.uid,
+      Change: `VIP${p.oldLevel} → VIP${p.newLevel}`,
+      Admin: p.admin || "Automatic",
+      Time: now(),
+    })
+  );
+}
+
+export async function notifyBalanceAdjust(p: {
+  username: string;
+  uid: string;
+  direction: "credit" | "debit";
+  coins: string;
+  admin: string;
+}) {
+  await sendTelegram(
+    format(p.direction === "credit" ? "➕ Balance Added" : "➖ Balance Removed", {
+      User: p.username,
+      UID: p.uid,
+      Amount: `${p.direction === "credit" ? "+" : "-"}${p.coins} coins`,
+      Admin: p.admin,
       Time: now(),
     })
   );

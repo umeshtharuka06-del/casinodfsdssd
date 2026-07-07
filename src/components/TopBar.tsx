@@ -21,10 +21,9 @@ export function TopBar() {
             grows; items-center vertically centres the logo and balance widget. */}
         <div className="flex h-14 items-center justify-between gap-3 px-4">
           <Link href="/" className="flex items-center" aria-label="Mega 99 home">
-            {/* Premium gold/red wordmark artwork (with text fallback on load
-                error). h-[42px] is ~17% larger than the previous h-9 (36px);
-                width auto preserves aspect ratio (no stretch). */}
-            <Wordmark priority className="h-[42px]" />
+            {/* Canonical Mega 99 logo (image only). h-[42px] is ~17% larger than
+                the previous 36px; width auto preserves aspect ratio (no stretch). */}
+            <Wordmark />
           </Link>
 
           {loading ? (

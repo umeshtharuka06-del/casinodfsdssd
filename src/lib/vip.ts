@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { getBusinessConfig, VipTier } from "./business-config";
 import { getEffectiveQualifiedReferrals } from "./referral-qualification";
+import { notifyVipChanged } from "./telegram";
 
 // ────────────────────────────────────────────────────────────────────────────
 // VIP system (Part 5).
@@ -98,7 +99,7 @@ export async function recomputeVipForUser(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { vipLevel: true, vipOverride: true },
+      select: { vipLevel: true, vipOverride: true, username: true },
     });
     if (!user) return null;
     if (user.vipOverride !== null) {
@@ -128,6 +129,12 @@ export async function recomputeVipForUser(
           },
         }),
       ]);
+      await notifyVipChanged({
+        username: user.username,
+        uid: userId,
+        oldLevel: user.vipLevel,
+        newLevel,
+      });
     }
     return newLevel;
   } catch (e) {
@@ -145,11 +152,12 @@ export async function setVipOverride(
   level: number | null,
   adminId: string
 ): Promise<number> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { vipLevel: true },
-  });
+  const [user, adminUser] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { vipLevel: true, username: true } }),
+    prisma.user.findUnique({ where: { id: adminId }, select: { username: true } }),
+  ]);
   const oldLevel = user?.vipLevel ?? 0;
+  const adminName = adminUser?.username ?? "Admin";
 
   if (level === null) {
     await prisma.user.update({ where: { id: userId }, data: { vipOverride: null } });
@@ -165,5 +173,14 @@ export async function setVipOverride(
       data: { userId, oldLevel, newLevel: level, reason: "ADMIN_OVERRIDE", adminId },
     }),
   ]);
+  if (level !== oldLevel) {
+    await notifyVipChanged({
+      username: user?.username ?? "—",
+      uid: userId,
+      oldLevel,
+      newLevel: level,
+      admin: adminName,
+    });
+  }
   return level;
 }
