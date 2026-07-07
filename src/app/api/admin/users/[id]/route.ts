@@ -8,6 +8,7 @@ import { setVipOverride, recomputeVipForUser } from "@/lib/vip";
 import { setReferralQualificationStatus } from "@/lib/referral-qualification";
 import { isPlausibleUserId } from "@/lib/validation";
 import { audit } from "@/lib/audit";
+import { clientIp } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 // adjustment, admin notes, and referral-qualification status changes. All are
 // audited and, where relevant, trigger a VIP recompute.
 const actionSchema = z.object({
-  action: z.enum(["vipOverride", "referralAdjust", "addNote", "qualificationStatus"]),
+  action: z.enum(["vipOverride", "referralAdjust", "addNote", "qualificationStatus", "withdrawAccess"]),
   level: z.number().int().min(0).max(10).nullable().optional(),
   adjustment: z.number().int().min(-1_000_000).max(1_000_000).optional(),
   body: z.string().trim().min(1).max(1000).optional(),
   referredUserId: z.string().min(1).optional(),
   status: z.enum(["PENDING", "QUALIFIED", "REJECTED"]).optional(),
+  enabled: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -46,10 +48,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const parsed = actionSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return fail("Invalid request.");
-  const { action, level, adjustment, body, referredUserId, status } = parsed.data;
+  const { action, level, adjustment, body, referredUserId, status, enabled } = parsed.data;
 
   try {
     switch (action) {
+      case "withdrawAccess": {
+        if (enabled === undefined) return fail("Provide enabled (true/false).");
+        await prisma.user.update({ where: { id }, data: { manualWithdrawAccess: enabled } });
+        const u = await prisma.user.findUnique({ where: { id }, select: { username: true } });
+        await audit(enabled ? "admin.user.withdrawAccess.enable" : "admin.user.withdrawAccess.disable", {
+          userId: admin.id,
+          ip: clientIp(req),
+          detail: { target: id, username: u?.username, enabled },
+        });
+        return ok({ manualWithdrawAccess: enabled });
+      }
       case "vipOverride": {
         if (level === undefined) return fail("Provide a level (or null to clear).");
         const newLevel = await setVipOverride(id, level, admin.id);

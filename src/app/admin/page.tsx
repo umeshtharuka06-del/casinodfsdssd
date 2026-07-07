@@ -11,6 +11,7 @@ import { AnnouncementsTab } from "@/components/admin/AnnouncementsTab";
 import { ConfigTab } from "@/components/admin/ConfigTab";
 import { DepositsTab } from "@/components/admin/DepositsTab";
 import { ManualReviewsTab } from "@/components/admin/ManualReviewsTab";
+import { ReferralRevenueTab } from "@/components/admin/ReferralRevenueTab";
 import { CryptoWithdrawalsTab } from "@/components/admin/CryptoWithdrawalsTab";
 import { DepositWalletsTab } from "@/components/admin/DepositWalletsTab";
 import { AdminSidebar, type NavGroup } from "@/components/admin/AdminSidebar";
@@ -18,6 +19,7 @@ import {
   HomeIcon,
   ChartIcon,
   ProfileIcon,
+  ReferralIcon,
   BoltIcon,
   RechargeIcon,
   ShieldIcon,
@@ -50,7 +52,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Players",
-    items: [{ key: "users", label: "Users", icon: ProfileIcon }],
+    items: [
+      { key: "users", label: "Users", icon: ProfileIcon },
+      { key: "referral-revenue", label: "Referral Revenue", icon: ReferralIcon },
+    ],
   },
   {
     label: "Games",
@@ -126,6 +131,7 @@ export default function AdminPage() {
           {tab === "overview" && <OverviewTab />}
           {tab === "financial" && <FinancialTab />}
           {tab === "users" && <UsersTab />}
+          {tab === "referral-revenue" && <ReferralRevenueTab />}
           {tab === "force" && <ForceResultTab />}
           {tab === "deposits" && <DepositsTab />}
           {tab === "manual" && <ManualReviewsTab focusId={focusDeposit} />}

@@ -31,6 +31,17 @@ interface Summary {
   pendingReferrals: number;
   rejectedReferrals: number;
   totalEarningsFmt: string;
+  commissionPct: number;
+  commissionPendingFmt: string;
+  commissionAvailableFmt: string;
+  commissionClaimedFmt: string;
+  lifetimeEarningsFmt: string;
+  todayEarnedFmt: string;
+  weekEarnedFmt: string;
+  monthEarnedFmt: string;
+  totalReferredBets: number;
+  totalHouseFeeFmt: string;
+  totalRevenueShareFmt: string;
   rewards: Reward[];
   recent: Array<{ username: string; createdAt: string; deposited: boolean }>;
 }
@@ -189,6 +200,48 @@ export default function ReferralPage() {
         </div>
       </div>
 
+      {/* Casino revenue share — % of house fee on referred players' bets */}
+      <div className="card overflow-hidden">
+        <div className="panel-head rounded-t-2xl">
+          <span>Casino revenue share</span>
+          <span className="text-xs font-semibold text-white/90">{sum.commissionPct}% of house fee</span>
+        </div>
+        <div className="p-4">
+          <p className="mb-3 text-[11px] font-medium leading-relaxed text-[#777777]">
+            Earn {sum.commissionPct}% of the house fee on every bet your referred players make —
+            win or lose. Commissions unlock after 7 days, then join your referral balance.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <RsStat label="Today" value={coins(sum.todayEarnedFmt)} />
+            <RsStat label="This week" value={coins(sum.weekEarnedFmt)} />
+            <RsStat label="This month" value={coins(sum.monthEarnedFmt)} />
+            <RsStat label="Pending" value={coins(sum.commissionPendingFmt)} accent="text-accent-orange" />
+            <RsStat label="Available" value={coins(sum.commissionAvailableFmt)} accent="text-game-green" />
+            <RsStat label="Lifetime" value={coins(sum.lifetimeEarningsFmt)} accent="text-[#111111]" />
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-black/5 pt-3 text-center">
+            <div>
+              <div className="text-[10px] uppercase text-[#999999]">Referred bets</div>
+              <div className="font-display text-sm font-bold tabular-nums text-[#111111]">
+                {sum.totalReferredBets.toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase text-[#999999]">House fee gen.</div>
+              <div className="font-display text-sm font-bold tabular-nums text-royal-blue-bright">
+                {coins(sum.totalHouseFeeFmt)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase text-[#999999]">Revenue share</div>
+              <div className="font-display text-sm font-bold tabular-nums text-game-green">
+                {coins(sum.totalRevenueShareFmt)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Code + link */}
       <div className="card overflow-hidden">
         <div className="panel-head rounded-t-2xl">Share &amp; earn</div>
@@ -304,4 +357,15 @@ export default function ReferralPage() {
 
 function Empty({ text }: { text: string }) {
   return <div className="py-8 text-center text-sm font-medium text-[#777777]">{text}</div>;
+}
+
+function RsStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="well px-2.5 py-2 text-center">
+      <div className="text-[10px] font-medium uppercase text-[#777777]">{label}</div>
+      <div className={`mt-0.5 flex items-center justify-center gap-1 text-sm font-bold tabular-nums ${accent ?? "text-[#111111]"}`}>
+        <CoinIcon size={13} /> {value}
+      </div>
+    </div>
+  );
 }
