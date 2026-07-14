@@ -185,6 +185,7 @@ export async function getAdminUserDetails(userId: string) {
       isAdmin: user.isAdmin,
       isBanned: user.isBanned,
       manualWithdrawAccess: user.manualWithdrawAccess,
+      referralRequirementOverride: user.referralRequirementOverride,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },

@@ -36,18 +36,20 @@ const Ctx = createContext<UserCtx | null>(null);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
-  const inflight = useRef(false);
+  const seq = useRef(0);
 
   const refresh = useCallback(async () => {
-    if (inflight.current) return;
-    inflight.current = true;
-    try {
-      const res = await api<Me>("/api/auth/me");
-      setMe(res.ok ? res.data! : null);
-    } finally {
-      inflight.current = false;
-      setLoading(false);
-    }
+    // Every call performs a real fetch and is sequence-tagged so an older,
+    // slower response can never overwrite a newer one. The previous "skip if a
+    // request is in flight" guard made refresh() a silent no-op right after
+    // login whenever the background poll was mid-request — the poll had started
+    // BEFORE the session cookie existed, so its stale "logged out" result won
+    // and the caller who awaited refresh() navigated with me still null.
+    const id = ++seq.current;
+    const res = await api<Me>("/api/auth/me");
+    if (id !== seq.current) return; // superseded by a newer refresh
+    setMe(res.ok ? res.data! : null);
+    setLoading(false);
   }, []);
 
   const setBalanceFmt = useCallback((fmt: string, raw?: number) => {

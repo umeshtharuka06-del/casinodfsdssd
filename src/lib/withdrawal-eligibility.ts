@@ -69,9 +69,12 @@ export async function checkWithdrawalEligibility(input: EligibilityInput): Promi
   // the normal restriction system below.
   const overrideUser = await prisma.user.findUnique({
     where: { id: input.userId },
-    select: { manualWithdrawAccess: true },
+    select: { manualWithdrawAccess: true, referralRequirementOverride: true },
   });
   if (overrideUser?.manualWithdrawAccess) return { ok: true };
+  // Narrower admin override: skip ONLY the minimum-qualified-referrals check.
+  // Every other rule below (limits, turnover, etc.) still applies.
+  const skipReferralCheck = overrideUser?.referralRequirementOverride === true;
 
   const [cfg, crypto] = await Promise.all([getBusinessConfig(), getCryptoConfig()]);
   const { withdrawLimits: limits, withdrawEligibility: elig } = cfg;
@@ -127,7 +130,7 @@ export async function checkWithdrawalEligibility(input: EligibilityInput): Promi
   // ── Part 9: eligibility ──
   if (elig.enabled) {
     const qualified = await getEffectiveQualifiedReferrals(input.userId);
-    if (qualified < elig.minQualifiedReferrals) {
+    if (!skipReferralCheck && qualified < elig.minQualifiedReferrals) {
       const detail = { qualified, required: elig.minQualifiedReferrals };
       await record(input, "REFERRAL_QUALIFICATION", detail);
       return {

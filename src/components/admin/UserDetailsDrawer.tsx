@@ -29,6 +29,7 @@ interface Details {
     isAdmin: boolean;
     isBanned: boolean;
     manualWithdrawAccess: boolean;
+    referralRequirementOverride: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -253,6 +254,7 @@ export function UserDetailsDrawer({
             <WithdrawalAccess
               userId={data.profile.id}
               enabled={data.profile.manualWithdrawAccess}
+              referralOverride={data.profile.referralRequirementOverride}
               onDone={async () => {
                 await reload();
                 onChanged?.();
@@ -915,16 +917,20 @@ function WalletManagement({
 function WithdrawalAccess({
   userId,
   enabled,
+  referralOverride,
   onDone,
 }: {
   userId: string;
   enabled: boolean;
+  referralOverride: boolean;
   onDone: () => void | Promise<void>;
 }) {
   const [on, setOn] = useState(enabled);
+  const [refOn, setRefOn] = useState(referralOverride);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
   useEffect(() => setOn(enabled), [enabled]);
+  useEffect(() => setRefOn(referralOverride), [referralOverride]);
 
   async function toggle() {
     const next = !on;
@@ -944,6 +950,29 @@ function WithdrawalAccess({
       text: next
         ? "Manual withdrawal access enabled — this user can withdraw immediately."
         : "Manual withdrawal access disabled — normal restrictions apply.",
+    });
+    await onDone();
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  async function toggleReferralOverride() {
+    const next = !refOn;
+    setBusy(true);
+    setToast(null);
+    const res = await api(`/api/admin/users/${userId}`, {
+      json: { action: "referralOverride", enabled: next },
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setToast({ ok: false, text: res.error || "Update failed." });
+      return;
+    }
+    setRefOn(next);
+    setToast({
+      ok: true,
+      text: next
+        ? "Referral requirement override enabled — this user can withdraw without qualified referrals. All other rules still apply."
+        : "Referral requirement override disabled — the referral requirement applies again.",
     });
     await onDone();
     setTimeout(() => setToast(null), 4000);
@@ -988,6 +1017,38 @@ function WithdrawalAccess({
             <span
               className={`absolute h-5 w-5 rounded-full bg-white shadow transition-all ${
                 on ? "left-6" : "left-1"
+              }`}
+            />
+          )}
+        </button>
+      </div>
+
+      {/* Independent, narrower override: bypasses ONLY the referral requirement. */}
+      <div className="mt-3 flex items-start justify-between gap-3 rounded-xl border border-black/10 bg-black/[0.03] p-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-[#111111]">Enable Referral Requirement Override</div>
+          <div className="mt-0.5 text-xs leading-relaxed text-slate-500">
+            When enabled, this user can withdraw without meeting the referral requirement.
+            All other withdrawal rules (minimum betting amount, turnover, manual review,
+            balance checks, etc.) remain unchanged.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={toggleReferralOverride}
+          disabled={busy}
+          role="switch"
+          aria-checked={refOn}
+          className={`relative mt-0.5 grid h-7 w-12 shrink-0 place-items-center rounded-full transition ${
+            refOn ? "bg-game-green" : "bg-slate-300"
+          } ${busy ? "opacity-60" : ""}`}
+        >
+          {busy ? (
+            <ArrowPathIcon className="h-4 w-4 animate-spin text-white" />
+          ) : (
+            <span
+              className={`absolute h-5 w-5 rounded-full bg-white shadow transition-all ${
+                refOn ? "left-6" : "left-1"
               }`}
             />
           )}

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { useUser } from "@/lib/user-context";
 import { Wordmark } from "./Wordmark";
 import { EyeIcon, EyeOffIcon } from "./icons";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
+  const { refresh } = useUser();
   const params = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState("");
@@ -48,14 +50,20 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       ? { email, username, password, ref, acceptTerms }
       : { email, password };
     const res = await api(path, { json });
-    setBusy(false);
 
     // On a recoverable error we NEVER clear the inputs (they are uncontrolled),
     // so the user's email/password stay exactly as typed.
     if (!res.ok) {
+      setBusy(false);
       setError(res.error || "Something went wrong. Please try again.");
       return;
     }
+    // The session cookie is now set, but the shared UserProvider still holds the
+    // pre-login "logged out" state. Populate it BEFORE navigating — otherwise the
+    // destination page renders with me=null/loading=false and either shows the
+    // guest landing or bounces straight back to /login, forcing a second login.
+    // (busy stays true so the button remains disabled through the transition.)
+    await refresh();
     const next = params.get("next") || "/";
     router.push(next);
     router.refresh();

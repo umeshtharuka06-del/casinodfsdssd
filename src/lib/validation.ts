@@ -13,7 +13,7 @@ export const cryptoWithdrawSchema = z.object({
 });
 
 /** User deposit request — "I Have Paid".
- *  ONCHAIN: `txid` optional (the poller can also detect the transfer).
+ *  ONCHAIN: `txid` (the on-chain transaction hash) is REQUIRED.
  *  OFFCHAIN: `txid` (the internal/exchange reference) is REQUIRED — it cannot be
  *  chain-verified, so the request always goes to manual admin review. */
 export const cryptoDepositSchema = z
@@ -24,6 +24,10 @@ export const cryptoDepositSchema = z
   })
   .refine((d) => d.txType !== "OFFCHAIN" || (d.txid && d.txid.length >= 6), {
     message: "Enter the off-chain transaction reference so our team can verify it.",
+    path: ["txid"],
+  })
+  .refine((d) => d.txType !== "ONCHAIN" || (d.txid && d.txid.length > 0), {
+    message: "Transaction ID is required.",
     path: ["txid"],
   });
 
