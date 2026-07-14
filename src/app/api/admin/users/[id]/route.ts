@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 // adjustment, admin notes, and referral-qualification status changes. All are
 // audited and, where relevant, trigger a VIP recompute.
 const actionSchema = z.object({
-  action: z.enum(["vipOverride", "referralAdjust", "addNote", "qualificationStatus", "withdrawAccess"]),
+  action: z.enum(["vipOverride", "referralAdjust", "addNote", "qualificationStatus", "withdrawAccess", "referralOverride"]),
   level: z.number().int().min(0).max(10).nullable().optional(),
   adjustment: z.number().int().min(-1_000_000).max(1_000_000).optional(),
   body: z.string().trim().min(1).max(1000).optional(),
@@ -62,6 +62,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           detail: { target: id, username: u?.username, enabled },
         });
         return ok({ manualWithdrawAccess: enabled });
+      }
+      case "referralOverride": {
+        if (enabled === undefined) return fail("Provide enabled (true/false).");
+        await prisma.user.update({ where: { id }, data: { referralRequirementOverride: enabled } });
+        const u = await prisma.user.findUnique({ where: { id }, select: { username: true } });
+        await audit(enabled ? "admin.user.referralOverride.enable" : "admin.user.referralOverride.disable", {
+          userId: admin.id,
+          ip: clientIp(req),
+          detail: { target: id, username: u?.username, enabled },
+        });
+        return ok({ referralRequirementOverride: enabled });
       }
       case "vipOverride": {
         if (level === undefined) return fail("Provide a level (or null to clear).");

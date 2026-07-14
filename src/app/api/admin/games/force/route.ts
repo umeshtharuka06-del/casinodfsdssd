@@ -42,6 +42,15 @@ export async function GET() {
     include: { _count: { select: { bets: true } } },
   });
 
+  // Display order: Parity always first, then the remaining games. Sorting is
+  // stable, so within each game the period ordering from the query is kept.
+  const GAME_DISPLAY_ORDER = ["PARITY", "BCONE", "EMERD", "SAPRE"];
+  rounds.sort((a, b) => {
+    const ai = GAME_DISPLAY_ORDER.indexOf(a.game);
+    const bi = GAME_DISPLAY_ORDER.indexOf(b.game);
+    return (ai === -1 ? GAME_DISPLAY_ORDER.length : ai) - (bi === -1 ? GAME_DISPLAY_ORDER.length : bi);
+  });
+
   // Pull every bet for the listed rounds in one query and aggregate in memory.
   // Betting windows are short, so the per-round bet volume is small.
   const roundIds = rounds.map((r) => r.id);

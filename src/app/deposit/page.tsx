@@ -100,6 +100,8 @@ export default function DepositPage() {
     if (!cfg?.wallet) return;
     if (amount === null || amount < cfg.minDepositUsdt)
       return setMsg({ text: `Minimum deposit is ${cfg.minDepositUsdt} USDT.`, ok: false });
+    if (txType === "ONCHAIN" && !txid.trim())
+      return setMsg({ text: "Transaction ID is required.", ok: false });
     if (txType === "OFFCHAIN" && txid.trim().length < 6)
       return setMsg({
         text: "Enter the off-chain transaction reference so our team can verify it.",
@@ -264,7 +266,7 @@ export default function DepositPage() {
             <div>
               <label className="text-xs text-slate-400">
                 {txType === "ONCHAIN"
-                  ? "Transaction ID (optional — speeds up verification)"
+                  ? "Transaction ID (required)"
                   : "Off-chain transaction reference (required)"}
               </label>
               <input
