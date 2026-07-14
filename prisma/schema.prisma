@@ -49,6 +49,10 @@ model User {
   // (turnover, referral qualification, minimum betting, limits) are bypassed for
   // THIS user only — everyone else keeps the normal restriction system.
   manualWithdrawAccess Boolean @default(false)
+  // Narrower admin override: bypasses ONLY the minimum-qualified-referrals
+  // withdrawal check. Every other rule (turnover, limits, balance, review)
+  // still applies to this user.
+  referralRequirementOverride Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
