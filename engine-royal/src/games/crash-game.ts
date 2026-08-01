@@ -33,8 +33,11 @@ export async function ensureCurrentCrashRound() {
   });
   const period = (last?.period ?? 0n) + 1n;
   const serverSeed = randomServerSeed();
-  const houseEdge = (await getSettingNumber("crash_house_edge_pct")) || 1;
-  const crashX = crashPoint(serverSeed, `crash:${period}`, period, houseEdge);
+  // Share of rounds that bust instantly at 1.00x. Defaults to 20 (~1-in-5) so
+  // instant crashes happen naturally and unpredictably; tunable via the
+  // `crash_instant_pct` setting without touching any other game.
+  const instantPct = (await getSettingNumber("crash_instant_pct")) || 20;
+  const crashX = crashPoint(serverSeed, `crash:${period}`, period, instantPct);
 
   const now = Date.now();
   const startAt = new Date(now + (await bettingMs()));
