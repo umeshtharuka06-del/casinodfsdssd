@@ -6,10 +6,12 @@
  *  like the prediction engine. The website (src/lib/crash-game.ts) handles the
  *  database/round orchestration and calls into here for every number.
  *
- *  Behaviour is identical to the original implementation:
+ *  Behaviour:
  *    multiplier(t) = exp(GROWTH_PER_MS * elapsedMs)   (2x ≈ 4.6s, 10x ≈ 15s)
- *  and a bustabit-style provably-fair crash point with a configurable house
- *  edge (an "instant bust" slice at 1.00x).
+ *  and a bustabit-style provably-fair crash point with a configurable
+ *  "instant bust" slice at exactly 1.00x. The instant-bust share defaults to
+ *  ~20% (≈1-in-5 rounds) so instant crashes appear naturally and unpredictably
+ *  while the remaining rounds keep the original multiplier curve unchanged.
  * ───────────────────────────────────────────────────────────────────────────
  */
 
@@ -37,18 +39,30 @@ export function durationMsForCrash(crashX: number): number {
 
 /**
  * Crash point (×100, e.g. 247 = 2.47x) for a round.
- * `houseEdgePct` controls the instant-bust slice (1% ⇒ 1 in 100 busts at 1.00x).
+ *
+ * `instantCrashPct` is the share of rounds that bust instantly at exactly 1.00x.
+ * At the default of 20 this is ~1-in-5 rounds: instant crashes appear naturally
+ * and unpredictably (~20% over the long run) with random spacing and never a
+ * fixed interval. The outcome is derived only from (serverSeed, clientSeed,
+ * period), so every round is fully independent and provably fair — the next
+ * instant crash can never be predicted from previous rounds. The remaining
+ * ~80% of rounds keep the original bustabit curve (1.10x, 1.25x, 1.80x … 10x,
+ * 20x, 50x, 100x+) completely unchanged.
  */
 export function crashPoint(
   serverSeed: string,
   clientSeed: string,
   period: bigint | number,
-  houseEdgePct = 1
+  instantCrashPct = 20
 ): number {
   const h = hmac(serverSeed, `${clientSeed}:${period.toString()}`);
-  const edgeDivisor = Math.round(100 / houseEdgePct);
+  // ~1-in-(100/pct) rounds bust at 1.00x. 20% → divisor 5. The divisor is
+  // applied to a uniform hash slice, so each round independently lands on the
+  // instant-bust slice at the target probability — weighted-random, never on a
+  // fixed schedule.
+  const instantDivisor = Math.max(1, Math.round(100 / instantCrashPct));
   const e = parseInt(h.slice(0, 8), 16);
-  if (e % edgeDivisor === 0) return 100; // 1.00x instant bust
+  if (e % instantDivisor === 0) return 100; // 1.00x instant bust
 
   const num = parseInt(h.slice(0, 13), 16);
   const max = Math.pow(2, 52);

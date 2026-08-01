@@ -48,20 +48,25 @@ export function colorResult(
 }
 
 /**
- * Crash multiplier (bustabit-style), with a configurable house edge.
- * Returns the crash point as an integer ×100 (e.g. 247 = 2.47x).
+ * Crash multiplier (bustabit-style). Returns the crash point as an integer ×100
+ * (e.g. 247 = 2.47x).
+ *
+ * `instantCrashPct` is the share of rounds that bust instantly at exactly 1.00x
+ * (default 20 ⇒ ~1-in-5). Instant crashes are weighted-random and independent
+ * per round — never on a fixed interval — and the remaining rounds keep the
+ * original multiplier curve unchanged.
  */
 export function crashPoint(
   serverSeed: string,
   clientSeed: string,
   period: bigint,
-  houseEdgePct = 1
+  instantCrashPct = 20
 ): number {
   const h = hmac(serverSeed, `${clientSeed}:${period.toString()}`);
-  // instant-bust slice gives the house edge
-  const edgeDivisor = Math.round(100 / houseEdgePct); // 1% -> 1 in 100 busts at 1.00x
+  // instant-bust slice at 1.00x; 20% -> 1 in 5 rounds, weighted-random
+  const instantDivisor = Math.max(1, Math.round(100 / instantCrashPct));
   const e = parseInt(h.slice(0, 8), 16);
-  if (e % edgeDivisor === 0) return 100; // 1.00x
+  if (e % instantDivisor === 0) return 100; // 1.00x
 
   const num = parseInt(h.slice(0, 13), 16);
   const max = Math.pow(2, 52);

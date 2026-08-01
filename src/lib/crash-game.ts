@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { applyBalance } from "./wallet";
 import { multiplierAt } from "@/engine/crash-engine";
 import { formatRoundId } from "./round-id";
-import { computeFee } from "./fee";
+import { getSetting } from "./settings";
 
 // ────────────────────────────────────────────────────────────────────────────
 // WEBSITE (read + bet + manual cashout).
@@ -18,6 +18,26 @@ const GAME = "CRASH";
 
 // Re-export so existing importers keep working unchanged.
 export { multiplierAt };
+
+// ── Crash house fee ─────────────────────────────────────────────────────────
+// Crash charges its OWN stake fee: 4% (100 coins → 4). This is deliberately
+// DOUBLE the standard table fee (fee.ts / computeFee, which stays at 2% for
+// WinGo and every other game) and is kept local to Crash so no other game is
+// affected. The global `house_fee_enabled` switch is still honoured, and the
+// "fee must leave some stake" guard mirrors fee.ts exactly.
+//   50 → 2   100 → 4   200 → 8   500 → 20   1000 → 40
+const CRASH_FEE_PCT = 4;
+
+async function computeCrashFee(
+  amountCents: number
+): Promise<{ feeAmount: number; effectiveBet: number }> {
+  const enabled = (await getSetting("house_fee_enabled")) !== "false";
+  if (!enabled) return { feeAmount: 0, effectiveBet: amountCents };
+
+  let fee = Math.floor((amountCents * CRASH_FEE_PCT) / 100);
+  fee = Math.max(0, Math.min(fee, amountCents - 1));
+  return { feeAmount: fee, effectiveBet: amountCents - fee };
+}
 
 /** READ-ONLY: the active (BETTING/RUNNING) crash round, or null. Never creates,
  *  promotes, or settles — that is the engine's job. */
@@ -65,7 +85,7 @@ export async function placeCrashBet(
   });
   if (exists) throw new Error("ALREADY_BET");
 
-  const { feeAmount, effectiveBet } = await computeFee(amount);
+  const { feeAmount, effectiveBet } = await computeCrashFee(amount);
 
   return prisma.$transaction(async (tx) => {
     await applyBalance(tx, userId, -amount, "BET", undefined, {
